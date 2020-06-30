@@ -18,12 +18,14 @@ Jinja2==2.10.1
 Mako==1.1.0
 MarkupSafe==1.1.1
 mccabe==0.6.1
+mysqlclient==1.4.6
 nose==1.3.7
 nose-parameterized==0.6.0
 pre-commit==2.5.1
 pycodestyle==2.5.0
 pycrypto==2.6.1
 pyflakes==2.1.1
+PyMySQL==0.9.3
 python-dateutil==2.8.0
 python-editor==1.0.4
 pytz==2019.3

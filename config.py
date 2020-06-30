@@ -24,7 +24,7 @@ class DevelopConfig(Config):
     DEBUG = True
 
     SQLALCHEMY_RECORD_QUERIES = True
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:mysql@127.0.0.1/circlecharset=utf8mb4'
+    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:mysql@127.0.0.1/circle?charset=utf8mb4'
 
 
 class TestingConfig(Config):
