@@ -24,6 +24,24 @@ def custom(code=-1, msg='', data=''):
     return res
 
 
-def success(code=200, msg='', data=''):
+def succeed(code=200, msg='', data=''):
     res = get_responde(code, msg, data)
     return res
+
+
+def usually(msg='', data=''):
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(e)
+        return server_error()
+    return succeed(msg=msg, data=data)
+
+
+def server_error():
+    from app import db
+    db.session.rollback()
+    response = jsonify({'code': -110, 'msg': "服务器异常，请稍后重试"})
+    response.status_code = 200
+    return response

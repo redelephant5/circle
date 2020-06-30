@@ -15,6 +15,7 @@ from flask import request
 
 from app.enum import CheckType
 from app.reponse import custom
+from app.utils.model_util import md5
 
 
 def check_request_params(**checks):
@@ -98,4 +99,10 @@ def request_params_value_check(name, isexist, value, check):
                     res = datetime.strptime(value, "%H:%M:%S")
             except Exception:
                 return "%s应为time格式" % name, res
+    elif check == CheckType.password:
+        if value:
+            try:
+                md5(value)
+            except Exception:
+                return "%s不合法，包含非法字符" % name, res
     return None, res

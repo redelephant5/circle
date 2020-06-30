@@ -10,10 +10,12 @@
 from datetime import datetime
 
 from sqlalchemy import func, text
+from xpinyin import Pinyin
 
 from app import db
 from app.enum import UserState
 from .base_model import BaseModelUuidPk
+pinyin = Pinyin()
 
 
 class Users(BaseModelUuidPk):
@@ -35,3 +37,10 @@ class Users(BaseModelUuidPk):
     def to_json(self, exclude_list=("password",)):
         res = super(Users, self).to_json(exclude_list=exclude_list)
         return res
+
+    def set_pinyin(self, name):
+        try:
+            pinyin_name = pinyin.get_pinyin(name, '')
+        except Exception:
+            pinyin_name = ""
+        return pinyin_name
