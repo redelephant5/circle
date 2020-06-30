@@ -25,7 +25,7 @@ class Users(BaseModelUuidPk):
     nick_name = db.Column(db.String(50), comment="昵称")
     nick_pinyin = db.Column(db.String(255), comment="昵称拼音")
     email = db.Column(db.String(255), default='', comment="邮箱")
-    phone = db.Column(db.String(255), comment="手机号")
+    phone = db.Column(db.String(255), index=True, comment="手机号")
     password = db.Column(db.String(255), comment="密码")
     device_identifier = db.Column(db.String(255), comment="设备标示")
     sex = db.Column(db.Integer, default=3, comment="性别 1 男 2 女 3未配置")
