@@ -14,7 +14,7 @@ from xpinyin import Pinyin
 
 from app import db
 from app.enum import UserState
-from .base_model import BaseModelUuidPk
+from .base_model import BaseModelUuidPk, BaseModelIntPk
 pinyin = Pinyin()
 
 
@@ -61,3 +61,27 @@ class UserTrip(BaseModelUuidPk):
 
 
 Users.trips = db.relationship("UserTrip", backref="user")
+
+
+class UserFriend(BaseModelIntPk):
+
+    __tablename__ = "user_friend"
+    user_id = db.Column(db.String(32), db.ForeignKey("users.object_id"), nullable=False)
+    friend_id = db.Column(db.String(32), db.ForeignKey("users.object_id"), nullable=False)
+    content = db.Column(db.String(500), comment="申请附加信息")
+    flag = db.Column(db.Integer, default=0, comment="验证标志 0 已申请 1 同意 2 未同意 3 待验证")
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "friend_id", name="uix_user_friend"),
+    )
+
+    def to_json(self, exclude_list=()):
+        res = super(UserFriend, self).to_json(exclude_list=exclude_list)
+        if self.friend:
+            res["user_info"] = self.friend.to_json()
+        if self.to_friend:
+            res["friend_info"] = self.to_friend.to_json()
+
+
+Users.friend = db.relationship("UserFriend", backref="user", foreign_keys="UserFriend.user_id")
+Users.to_friend = db.relationship("UserFriend", backref="user_friend", foreign_keys="UserFriend.friend_id")
