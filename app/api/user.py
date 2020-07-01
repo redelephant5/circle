@@ -9,7 +9,7 @@
 
 from app import db
 from app.api import api
-from app.models import Users
+from app.models import Users, UserTrip
 from app.decorators import check_request_params, user_required, current_user
 from app.enum import CheckType, UserState
 from app.utils.model_util import md5
@@ -64,11 +64,10 @@ def user_valify_data(verify_data, data_type):
     user_name=("user_name", True, CheckType.other),
     nick_name=("nick_name", False, CheckType.other),
     email=("email", False, CheckType.email),
-    phone=("phone", True, CheckType.phone),
     sex=("sex", True, CheckType.int),
     birthday=("birthday", False, CheckType.date)
 )
-def user_update(user_name, nick_name, email, phone, sex, birthday):
+def user_update(user_name, nick_name, email, sex, birthday):
     current_user.user_name = user_name
     current_user.user_pinyin = current_user.set_pinyin(user_name)
     current_user.nick_name = nick_name

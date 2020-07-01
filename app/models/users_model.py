@@ -7,7 +7,7 @@
 # @Introduction : users model
 # dependence
 
-from datetime import datetime
+from datetime import datetime, date
 
 from sqlalchemy import func, text
 from xpinyin import Pinyin
@@ -44,3 +44,20 @@ class Users(BaseModelUuidPk):
         except Exception:
             pinyin_name = ""
         return pinyin_name
+
+
+class UserTrip(BaseModelUuidPk):
+
+    __tablename__ = "user_trip"
+    user_id = db.Column(db.String(32), db.ForeignKey("users.object_id"), nullable=False)
+    trip_date = db.Column(db.Date, default=date.today, comment="行程日期")
+    start_time = db.Column(db.DateTime, default=datetime.now, server_default=func.now(),
+                           comment="行程开始时间")
+    end_time = db.Column(db.DateTime, default=datetime.now, server_default=func.now(),
+                         comment="行程结束时间")
+    name = db.Column(db.String(255), default="就不告诉你", comment="行程名称")
+    is_adjust = db.Column(db.Boolean, default=True, comment="是否可调整")
+    is_see = db.Column(db.Boolean, default=True, comment="是否可见")
+
+
+Users.trips = db.relationship("UserTrip", backref="user")

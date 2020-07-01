@@ -3,3 +3,4 @@
 
 from .users_model import *
 from .base_model import *
+from .circle_model import *
