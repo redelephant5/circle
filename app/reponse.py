@@ -9,8 +9,6 @@
 
 from flask import jsonify
 
-from app import db
-
 
 def get_responde(code, msg='', data=None):
     response = jsonify({'code': code, 'msg': msg, 'data': data})
@@ -19,6 +17,7 @@ def get_responde(code, msg='', data=None):
 
 
 def custom(code=-1, msg='', data=''):
+    from app import db
     db.session.rollback()
     res = get_responde(code, msg, data)
     return res
@@ -30,6 +29,7 @@ def succeed(code=200, msg='', data=''):
 
 
 def usually(msg='', data=''):
+    from app import db
     try:
         db.session.commit()
     except Exception as e:
@@ -45,3 +45,17 @@ def server_error():
     response = jsonify({'code': -110, 'msg': "服务器异常，请稍后重试"})
     response.status_code = 200
     return response
+
+
+def usually_with_callback(msg='', data='', callback=None, parms=()):
+    from app import db
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(e)
+        return server_error()
+    if callback:
+        return succeed(msg=msg, data=callback(*parms))
+    else:
+        return succeed(msg=msg, data=data)

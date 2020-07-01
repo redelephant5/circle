@@ -11,11 +11,21 @@ import json
 from datetime import datetime
 
 from functools import wraps
-from flask import request
+from flask import request, _request_ctx_stack, has_request_context
+from werkzeug.local import LocalProxy
 
-from app.enum import CheckType
+from app.enum import CheckType, UserState
+from app.models import Users
 from app.reponse import custom
 from app.utils.model_util import md5
+
+current_user = LocalProxy(lambda: get_user())   # type: Users
+
+
+def get_user():
+    if has_request_context() and not hasattr(_request_ctx_stack.top, "user"):
+        return None
+    return getattr(_request_ctx_stack.top, "user", None)
 
 
 def check_request_params(**checks):
@@ -106,3 +116,26 @@ def request_params_value_check(name, isexist, value, check):
             except Exception:
                 return "%s不合法，包含非法字符" % name, res
     return None, res
+
+
+def user_required(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if current_user:
+            return func(*args, **kwargs)
+        # 获取用户id
+        if request.method in ["POST", "PUT", "DELETE"]:
+            user_id = request.form.get("user_id")
+        else:
+            user_id = request.args.get("user_id")
+        if user_id:
+            user = Users.query.filter(Users.object_id == user_id,
+                                      Users.state == UserState.normal.value).first()
+            if not user:
+                return custom(msg="用户不存在或已注销!")
+            else:
+                _request_ctx_stack.top.user = user
+                return func(*args, **kwargs)
+        else:
+            return custom(msg="user_id为空")
+    return wrapper

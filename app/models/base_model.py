@@ -21,7 +21,7 @@ class JsonBaseMixin(object):
     def to_json(self, exclude_list=()):
         res = {}
         res["object_name"] = self.__class__.__name__
-        for col in self.__tabls__.columns:
+        for col in self.__table__.columns:
 
             col_name = col.name
             if col_name in exclude_list:
