@@ -118,14 +118,18 @@ def user_user_info(query_user):
     phone=("phone", True, CheckType.other)
 )
 def user_query_users_by_phone(phone):
-    # todo 如用户不是user的好友
-    query_user = Users.query.outerjoin(Users.to_friend)
-    query_user = query_user.filter(Users.phone == phone,
-                                   Users.state == UserState.normal.value,
-                                   UserFriend.user_id == current_user.object_id)
+    user = Users.query.filter(Users.phone == phone,
+                              Users.state == UserState.normal.value)
+    phone_user = user.first()
+    if not phone_user:
+        return custom(msg="用户不存在或已注销!")
+    query_user = user.outerjoin(Users.to_friend)
+    query_user = query_user.filter(UserFriend.user_id == current_user.object_id)
     query_user = query_user.options(contains_eager(Users.to_friend)).first()
     if not query_user:
-        return custom(msg="用户不存在或已注销!")
+        res = phone_user.to_json()
+        res["user_friend_info"] = {'flag': 4}
+        return succeed(data=res)
     else:
         return succeed(data=query_user.to_json_friend())
 
