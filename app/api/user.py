@@ -156,6 +156,15 @@ def user_add_friend(friend_id, content):
     friend_res = friend.filter(UserFriend.flag == 3).first()
     if friend_res:
         return custom(msg="该用户已添加您好友,请进行验证")
+    friend_res = friend.filter(UserFriend.flag == 2).first()
+    if friend_res:
+        friend_res.flag = 0
+        to_friend_res = UserFriend.query.filter_by(friend_id=current_user.object_id,
+                                                   user_id=friend_id).first()
+        if to_friend_res:
+            to_friend_res.flag = 3
+        db.session.add_all([friend_res, to_friend_res])
+        return usually(msg="已重新申请!")
     userfriend = UserFriend()
     userfriend.user_id = current_user.object_id
     userfriend.friend_id = friend_id
