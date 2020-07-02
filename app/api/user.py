@@ -118,6 +118,7 @@ def user_user_info(query_user):
     phone=("phone", True, CheckType.other)
 )
 def user_query_users_by_phone(phone):
+    # todo 如用户不是user的好友
     query_user = Users.query.outerjoin(Users.to_friend)
     query_user = query_user.filter(Users.phone == phone,
                                    Users.state == UserState.normal.value,
