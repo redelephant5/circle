@@ -38,7 +38,7 @@ class Users(BaseModelUuidPk):
         res = super(Users, self).to_json(exclude_list=exclude_list)
         return res
 
-    def to_json_firend(self, exclude_list=("password",)):
+    def to_json_friend(self, exclude_list=("password",)):
         res = super(Users, self).to_json(exclude_list=exclude_list)
         if self.to_friend:
             res["user_friend_info"] = [friend.to_json() for friend in self.to_friend]

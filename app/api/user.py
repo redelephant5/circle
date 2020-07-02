@@ -126,7 +126,7 @@ def user_query_users_by_phone(phone):
     if not query_user:
         return custom(msg="用户不存在或已注销!")
     else:
-        return succeed(data=query_user.to_json_firend())
+        return succeed(data=query_user.to_json_friend())
 
 
 @api.route("/user/add_friend", methods=["GET"])
