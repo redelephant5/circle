@@ -38,6 +38,12 @@ class Users(BaseModelUuidPk):
         res = super(Users, self).to_json(exclude_list=exclude_list)
         return res
 
+    def to_json_firend(self, exclude_list=("password",)):
+        res = super(Users, self).to_json(exclude_list=exclude_list)
+        if self.to_friend:
+            res["user_friend_info"] = [friend.to_json() for friend in self.to_friend]
+        return res
+
     def set_pinyin(self, name):
         try:
             pinyin_name = pinyin.get_pinyin(name, '')
@@ -69,18 +75,18 @@ class UserFriend(BaseModelIntPk):
     user_id = db.Column(db.String(32), db.ForeignKey("users.object_id"), nullable=False)
     friend_id = db.Column(db.String(32), db.ForeignKey("users.object_id"), nullable=False)
     content = db.Column(db.String(500), comment="申请附加信息")
-    flag = db.Column(db.Integer, default=0, comment="验证标志 0 已申请 1 同意 2 未同意 3 待验证")
+    flag = db.Column(db.Integer, default=0, comment="验证标志 0 已申请 1 同意 2 已拒绝 3 待验证")
+    verify_message = db.Column(db.String(50), comment="验证附加信息")
 
     __table_args__ = (
         db.UniqueConstraint("user_id", "friend_id", name="uix_user_friend"),
     )
 
-    def to_json(self, exclude_list=()):
+    def to_json_with_user(self, exclude_list=()):
         res = super(UserFriend, self).to_json(exclude_list=exclude_list)
-        if self.friend:
-            res["user_info"] = self.friend.to_json()
-        if self.to_friend:
-            res["friend_info"] = self.to_friend.to_json()
+        if self.user_friend:
+            res["friend_info"] = self.user_friend.to_json()
+        return res
 
 
 Users.friend = db.relationship("UserFriend", backref="user", foreign_keys="UserFriend.user_id")

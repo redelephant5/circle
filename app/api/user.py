@@ -7,7 +7,7 @@
 # @Introduction : users
 # dependence
 
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, contains_eager
 
 from app import db
 from app.api import api
@@ -112,6 +112,23 @@ def user_user_info(query_user):
         return succeed(data=query_user.to_json())
 
 
+@api.route("/user/query_users_by_phone", methods=["GET"])
+@user_required
+@check_request_params(
+    phone=("phone", True, CheckType.other)
+)
+def user_query_users_by_phone(phone):
+    query_user = Users.query.outerjoin(Users.to_friend)
+    query_user = query_user.filter(Users.phone == phone,
+                                   Users.state == UserState.normal.value,
+                                   UserFriend.user_id == current_user.object_id)
+    query_user = query_user.options(contains_eager(Users.to_friend)).first()
+    if not query_user:
+        return custom(msg="用户不存在或已注销!")
+    else:
+        return succeed(data=query_user.to_json_firend())
+
+
 @api.route("/user/add_friend", methods=["GET"])
 @user_required
 @check_request_params(
@@ -148,17 +165,60 @@ def user_add_friend(friend_id, content):
     return usually(msg="已申请!")
 
 
-@api.route("/user/query_friend", methods=["GET"])
+@api.route("/user/my_friend", methods=["GET"])
 @user_required
 def user_query_friend():
 
-    user_friends = UserFriend.query.join(UserFriend.user).join(UserFriend.user_friend)\
+    user_friends = UserFriend.query.join(UserFriend.user_friend)\
         .filter(Users.state == UserState.normal.value,
                 UserFriend.flag == 1,
-                UserFriend.user_id == current_user.object_id).all()
-    # user_friends = user_friends.options(joinedload(Users.friend),
-    #                                     joinedload(Users.to_friend)).all()
+                UserFriend.user_id == current_user.object_id)
+    user_friends = user_friends.options(joinedload(UserFriend.user_friend)).all()
     res = []
     for friend in user_friends:
-        res.append(friend.to_json())
-    return res
+        res.append(friend.to_json_with_user())
+    return succeed(data=res)
+
+
+@api.route("/user/other_flag_friend", methods=["GET"])
+@user_required
+@check_request_params(
+    flag=("flag", False, CheckType.other)
+)
+def user_other_flag_friend(flag=False):
+
+    res = []
+    other_friends = UserFriend.query.join(UserFriend.user_friend).\
+        filter(Users.state == UserState.normal.value,
+               UserFriend.flag != 1,
+               UserFriend.user_id == current_user.object_id)
+    if flag:
+        count = other_friends.count()
+        return succeed(data=count)
+    else:
+        for friend in other_friends:
+            res.append(friend.to_json_with_user())
+        return succeed(data=res)
+
+
+@api.route("/user/process_flag_friend", methods=["POST"])
+@user_required
+@check_request_params(
+    friend_id=("friend_id", True, CheckType.other),
+    flag=("flag", True, CheckType.int)
+)
+def user_accept_friend(friend_id, flag):
+
+    user = UserFriend.query.join(UserFriend.user_friend).\
+        filter(Users.state == UserState.normal.value,
+               UserFriend.user_id == current_user.object_id,
+               UserFriend.friend_id == friend_id)
+    user = user.options(joinedload(UserFriend.user_friend)).first()
+    if not user:
+        return custom(msg="该用户不存在或已注销!")
+    user.flag = flag
+    friend = UserFriend.query.filter_by(user_id=friend_id, firend_id=current_user.object_id).first()
+    if not friend:
+        return custom(msg="用户异常!")
+    friend.flag = flag  # todo 拒绝需要修改
+    return usually(msg="添加成功!")

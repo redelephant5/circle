@@ -14,6 +14,7 @@ class Config:
     SQLALCHEMY_COMMIT_ON_TEARDOWN = False
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_POOL_SIZE = 500
+    SQLALCHEMY_ECHO = True
 
     def init_app(self):
         pass
