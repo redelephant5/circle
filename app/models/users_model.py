@@ -34,12 +34,13 @@ class Users(BaseModelUuidPk):
                            comment="加入的时间")
     state = db.Column(db.Integer, default=UserState.normal.value, server_default=text('0'), index=True, comment="状态")
 
-    def to_json(self, exclude_list=("password",)):
+    def to_json(self, exclude_list=set()):
+        exclude_list.add("password")
         res = super(Users, self).to_json(exclude_list=exclude_list)
         return res
 
-    def to_json_friend(self, exclude_list=("password",)):
-        res = super(Users, self).to_json(exclude_list=exclude_list)
+    def to_json_friend(self, exclude_list=set()):
+        res = self.to_json(exclude_list=exclude_list)
         if self.to_friend:
             res["user_friend_info"] = [friend.to_json() for friend in self.to_friend]
         return res
@@ -83,7 +84,7 @@ class UserFriend(BaseModelIntPk):
     )
 
     def to_json_with_user(self, exclude_list=()):
-        res = super(UserFriend, self).to_json(exclude_list=exclude_list)
+        res = self.to_json(exclude_list)
         if self.user_friend:
             res["friend_info"] = self.user_friend.to_json()
         return res

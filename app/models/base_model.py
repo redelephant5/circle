@@ -18,7 +18,7 @@ from app.utils.model_util import get_uid
 
 class JsonBaseMixin(object):
 
-    def to_json(self, exclude_list=()):
+    def to_json(self, exclude_list=set()):
         res = {}
         res["object_name"] = self.__class__.__name__
         for col in self.__table__.columns:

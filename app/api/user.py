@@ -113,6 +113,13 @@ def user_user_info(query_user):
         return succeed(data=query_user.to_json())
 
 
+@api.route("/user/logout", methods=["GET"])
+@user_required
+def user_logout():
+    current_user.state = 2
+    return usually(msg="用户已注销")
+
+
 @api.route("/user/query_users_by_phone", methods=["GET"])
 @user_required
 @check_request_params(

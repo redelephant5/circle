@@ -24,6 +24,7 @@ class CircleUser(BaseModelIntPk):
     circle_id = db.Column(db.String(32), db.ForeignKey("circle.object_id"), nullable=False)
     user_id = db.Column(db.String(32), db.ForeignKey("users.object_id"), nullable=False)
     is_organizer = db.Column(db.Boolean, default=False, comment="是否组织者")
+    is_join = db.Column(db.Boolean, default=False, comment="是否加入")
     __table_args__ = (
         db.UniqueConstraint("user_id", "circle_id", name="uix_user_circle"),
     )
