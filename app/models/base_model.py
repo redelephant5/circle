@@ -18,7 +18,7 @@ from app.utils.model_util import get_uid
 
 class JsonBaseMixin(object):
 
-    def to_json(self, exclude_list=set()):
+    def to_json(self, exclude_list=()):
         res = {}
         res["object_name"] = self.__class__.__name__
         for col in self.__table__.columns:
@@ -63,4 +63,4 @@ class BaseModelIntPk(BaseModel):
 
 class BaseModelUuidPk(BaseModel):
     __abstract__ = True
-    object_id = db.Column(db.String(32), primary_key=True, default=get_uid(), nullable=False)
+    object_id = db.Column(db.String(32), primary_key=True, default=get_uid, nullable=False)

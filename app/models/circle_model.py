@@ -24,10 +24,16 @@ class CircleUser(BaseModelIntPk):
     circle_id = db.Column(db.String(32), db.ForeignKey("circle.object_id"), nullable=False)
     user_id = db.Column(db.String(32), db.ForeignKey("users.object_id"), nullable=False)
     is_organizer = db.Column(db.Boolean, default=False, comment="是否组织者")
-    is_join = db.Column(db.Boolean, default=False, comment="是否加入")
+    is_join = db.Column(db.Integer, default=0, comment="是否加入 0 未加入 1 已加入 2 已拒绝")
     __table_args__ = (
         db.UniqueConstraint("user_id", "circle_id", name="uix_user_circle"),
     )
+
+    def to_json_circle(self, exclude_list=()):
+        res = self.to_json(exclude_list=exclude_list)
+        if self.circle:
+            res["circle_info"] = self.circle.to_json()
+        return res
 
 
 Users.circle_user = db.relationship("CircleUser", backref="users")
