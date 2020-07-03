@@ -45,6 +45,7 @@ def user_create(user_name, nick_name, email, phone, password, sex):
     return usually_with_callback(msg="注册成功!", callback=callback, parms=(user,))
 
 
+# 字段验证
 @api.route("/user/verify_data", methods=["POST"])
 @check_request_params(
     verify_data=("verify_data", True, CheckType.other),
@@ -147,15 +148,6 @@ def user_add_friend(friend_id, content):
         return custom(msg="用户已不存在或已注销!")
     friend = UserFriend.query.filter(UserFriend.user_id == current_user.object_id,
                                      UserFriend.friend_id == friend_id)
-    friend_res = friend.filter(UserFriend.flag == 0).first()
-    if friend_res:
-        return custom(msg="该用户已申请,请不要重复提交")
-    friend_res = friend.filter(UserFriend.flag == 1).first()
-    if friend_res:
-        return custom(msg="该用户已是好友")
-    friend_res = friend.filter(UserFriend.flag == 3).first()
-    if friend_res:
-        return custom(msg="该用户已添加您好友,请进行验证")
     friend_res = friend.filter(UserFriend.flag == 2).first()
     if friend_res:
         friend_res.flag = 0
@@ -221,18 +213,21 @@ def user_other_flag_friend(flag=False):
     friend_id=("friend_id", True, CheckType.other),
     flag=("flag", True, CheckType.int)
 )
-def user_accept_friend(friend_id, flag):
+def user_process_flag_friend(friend_id, flag):
 
     user = UserFriend.query.join(UserFriend.user_friend).\
         filter(Users.state == UserState.normal.value,
                UserFriend.user_id == current_user.object_id,
-               UserFriend.friend_id == friend_id)
+               UserFriend.friend_id == friend_id,
+               UserFriend.flag == 3)
     user = user.options(joinedload(UserFriend.user_friend)).first()
     if not user:
         return custom(msg="该用户不存在或已注销!")
     user.flag = flag
-    friend = UserFriend.query.filter_by(user_id=friend_id, firend_id=current_user.object_id).first()
+    friend = UserFriend.query.filter_by(user_id=friend_id, friend_id=current_user.object_id, flag=0).first()
     if not friend:
         return custom(msg="用户异常!")
-    friend.flag = flag  # todo 拒绝需要修改
+    friend.flag = flag
+    if flag == 2:
+        friend.verify_message = "对方已拒绝"
     return usually(msg="添加成功!")
