@@ -292,7 +292,10 @@ def user_query_trip(start_time, end_time):
         res[trip_date[0].strftime("%Y-%m-%d")] = []
     for trip in user_trips:
         res[trip.trip_date.strftime("%Y-%m-%d")].append(trip.to_json())
-    return succeed(data=res)
+    response = []
+    for k in sorted(res.keys()):
+        response.append({k: res[k]})
+    return succeed(data=response)
 
 
 @api.route("/user/delete_trip", methods=["GET"])
@@ -303,7 +306,6 @@ def user_query_trip(start_time, end_time):
 def user_delete_trip(trip_id):
     trip = UserTrip.query.get(trip_id)
     if not trip:
-        return custom(msg="改日程不存在!")
-    trip.is_valid = 0
-    db.session.add(trip)
+        return custom(msg="该日程不存在!")
+    db.session.delete(trip)
     return usually(msg="日程已删除!")

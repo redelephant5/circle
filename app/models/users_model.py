@@ -44,6 +44,13 @@ class Users(BaseModelUuidPk):
             res["user_friend_info"] = [friend.to_json() for friend in self.to_friend]
         return res
 
+    def to_json_trip(self, exclude_list=()):
+        res = self.to_json(exclude_list=exclude_list)
+        res["user_trips"] = []
+        for trip in self.trips:
+            res["user_trips"].append(trip.to_json())
+        return res
+
     def set_pinyin(self, name):
         try:
             pinyin_name = pinyin.get_pinyin(name, '')

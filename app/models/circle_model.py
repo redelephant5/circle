@@ -35,6 +35,12 @@ class CircleUser(BaseModelIntPk):
             res["circle_info"] = self.circle.to_json()
         return res
 
+    def to_json_circle_user_schedule(self, exclude_list=()):
+        res = self.to_json(exclude_list=exclude_list)
+        if self.users:
+            res["user_info"] = self.users.to_json_trip()
+        return res
+
 
 Users.circle_user = db.relationship("CircleUser", backref="users")
 Circle.circle_user = db.relationship("CircleUser", backref="circle")

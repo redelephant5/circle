@@ -11,8 +11,8 @@ from sqlalchemy.orm import joinedload, contains_eager
 
 from app.api import api
 from app.decorators import user_required, check_request_params, current_user
-from app.enum import CheckType
-from app.models import Circle, CircleUser
+from app.enum import CheckType, UserState
+from app.models import Circle, CircleUser, Users, UserTrip
 from app.reponse import custom, usually, succeed, usually_with_callback
 from app import db
 
@@ -176,3 +176,25 @@ def circle_quit_circle(circle_id):
     else:
         db.session.delete(circle_user)
         return usually(msg="已退出!")
+
+
+@api.route("/circle/in_circle_user_schedule", methods=["GET"])
+@user_required
+@check_request_params(
+    circle_id=("circle_id", True, CheckType.other)
+)
+def circle_in_circle_user_schedule(circle_id):
+    res = {}
+    circle_users = CircleUser.query.join(CircleUser.users).outerjoin(UserTrip)
+    circle_users = circle_users.filter(CircleUser.circle_id == circle_id,
+                                       CircleUser.is_join == 1,
+                                       Users.state == UserState.normal.value)
+    circle_users = circle_users.options(joinedload(CircleUser.circle),
+                                        joinedload(CircleUser.users).contains_eager(Users.trips))
+    circle_users = circle_users.all()
+    res["circle_info"] = circle_users[0].circle.to_json()
+    circle_user_dict = {}
+    for circle_user in circle_users:
+        circle_user_dict[circle_user.user_id] = circle_user.to_json_circle_user_schedule()
+    res["circle_user_info"] = circle_user_dict
+    return succeed(data=res)
