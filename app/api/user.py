@@ -8,6 +8,7 @@
 # dependence
 
 from sqlalchemy.orm import joinedload, contains_eager
+from sqlalchemy import distinct
 
 from app import db
 from app.api import api
@@ -238,3 +239,71 @@ def user_process_flag_friend(friend_id, flag):
     if flag == 2:
         friend.verify_message = "对方已拒绝"
     return usually(msg="添加成功!")
+
+
+@api.route("/user/create_trip", methods=["POST"])
+@user_required
+@check_request_params(
+    trip_id=("trip_id", False, CheckType.other),
+    trip_date=("trip_date", True, CheckType.date),
+    start_time=("start_time", True, CheckType.datetime),
+    end_time=("end_time", True, CheckType.datetime),
+    name=("name", True, CheckType.other),
+    is_adjust=("is_adjust", True, CheckType.int),
+    is_see=("is_see", True, CheckType.int)
+)
+def user_create_trip(trip_id, trip_date, start_time, end_time, name, is_adjust, is_see):
+    if trip_id:
+        user_trip = UserTrip.query.get(trip_id)
+        if not user_trip:
+            return custom(msg="日程不存在,不能修改!")
+    else:
+        user_trip = UserTrip()
+    user_trip.user_id = current_user.object_id
+    user_trip.trip_date = trip_date
+    user_trip.start_time = start_time
+    user_trip.end_time = end_time
+    user_trip.name = name
+    user_trip.is_valid = is_adjust
+    user_trip.is_see = is_see
+    db.session.add(user_trip)
+    return usually(msg="日程添加成功!")
+
+
+@api.route("/user/query_trip", methods=["GET"])
+@user_required
+@check_request_params(
+    start_time=("start_time", True, CheckType.datetime),
+    end_time=("end_time", True, CheckType.datetime)
+)
+def user_query_trip(start_time, end_time):
+    res = {}
+    user_trips = UserTrip.query.filter(UserTrip.user_id == current_user.object_id,
+                                       UserTrip.start_time >= start_time,
+                                       UserTrip.end_time <= end_time,
+                                       UserTrip.is_valid == 1).\
+        order_by(UserTrip.start_time).all()
+    user_trip_dates = db.session.query(distinct(UserTrip.trip_date)).filter(UserTrip.user_id == current_user.object_id,
+                                                                            UserTrip.start_time >= start_time,
+                                                                            UserTrip.end_time <= end_time,
+                                                                            UserTrip.is_valid == 1).\
+        order_by(UserTrip.trip_date).all()
+    for trip_date in user_trip_dates:
+        res[trip_date[0].strftime("%Y-%m-%d")] = []
+    for trip in user_trips:
+        res[trip.trip_date.strftime("%Y-%m-%d")].append(trip.to_json())
+    return succeed(data=res)
+
+
+@api.route("/user/delete_trip", methods=["GET"])
+@user_required
+@check_request_params(
+    trip_id=("trip_id", True, CheckType.other)
+)
+def user_delete_trip(trip_id):
+    trip = UserTrip.query.get(trip_id)
+    if not trip:
+        return custom(msg="改日程不存在!")
+    trip.is_valid = 0
+    db.session.add(trip)
+    return usually(msg="日程已删除!")

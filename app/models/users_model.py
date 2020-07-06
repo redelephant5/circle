@@ -67,6 +67,7 @@ class UserTrip(BaseModelUuidPk):
 
 
 Users.trips = db.relationship("UserTrip", backref="user")
+Users.trips_query = db.relationship("UserTrip", backref="user_query", lazy="dynamic")
 
 
 class UserFriend(BaseModelIntPk):
