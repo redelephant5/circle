@@ -6,6 +6,7 @@
 # @Author       : RedElephant
 # @Introduction : circle
 # dependence
+from datetime import datetime, timedelta
 
 from sqlalchemy.orm import joinedload, contains_eager
 
@@ -23,19 +24,15 @@ from app import db
     circle_name=("circle_name", True, CheckType.other),
     describe=("describe", False, CheckType.other),
     user_ids=("user_ids", True, CheckType.json),
-    display_day=("display_day", True, CheckType.int),
-    types=("types", True, CheckType.int)
 )
-def circle_create_circle(circle_name, describe, user_ids, display_day, types):
+def circle_create_circle(circle_name, describe, user_ids):
 
     circle = Circle.query.filter_by(name=circle_name).first()
     if circle:
-        return custom(msg="改名称已存在,请修改!")
+        return custom(msg="该名称已存在,请修改!")
     circle = Circle()
     circle.name = circle_name
     circle.describe = describe
-    circle.display_day = display_day
-    circle.format_type = types
     circle_organizer = CircleUser()
     circle_organizer.circle_id = circle.object_id
     circle_organizer.user_id = current_user.object_id
@@ -73,14 +70,12 @@ def circle_query_circle():
 @check_request_params(
     circle_id=("circle_id", True, CheckType.other),
     circle_name=("circle_name", True, CheckType.other),
-    describe=("describe", False, CheckType.other),
-    display_day=("display_day", True, CheckType.int),
-    types=("types", True, CheckType.int)
+    describe=("describe", False, CheckType.other)
 )
-def circle_update_circle(circle_id, circle_name, describe, display_day, types):
+def circle_update_circle(circle_id, circle_name, describe):
     circle = Circle.query.filter_by(object_id=circle_id).first()
     if not circle:
-        return custom(msg="改圈不存在!")
+        return custom(msg="该圈不存在!")
     circle_user = CircleUser.query.filter(CircleUser.user_id == current_user.object_id,
                                           CircleUser.circle_id == circle_id,
                                           CircleUser.is_organizer == 1).first()
@@ -88,8 +83,6 @@ def circle_update_circle(circle_id, circle_name, describe, display_day, types):
         return custom(msg="并不是创建人员,不允许进行修改!")
     circle.name = circle_name
     circle.describe = describe
-    circle.display_day = display_day
-    circle.format_type = types
     db.session.add(circle)
     return usually(msg="修改成功!")
 
@@ -181,20 +174,34 @@ def circle_quit_circle(circle_id):
 @api.route("/circle/in_circle_user_schedule", methods=["GET"])
 @user_required
 @check_request_params(
-    circle_id=("circle_id", True, CheckType.other)
+    circle_id=("circle_id", True, CheckType.other),
+    query_date=("query_date", True, CheckType.date)
 )
-def circle_in_circle_user_schedule(circle_id):
+def circle_in_circle_user_schedule(circle_id, query_date):
     res = {}
-    circle_users = CircleUser.query.join(CircleUser.users).outerjoin(UserTrip)
+    circle_users = CircleUser.query.join(CircleUser.users).join(CircleUser.circle)
     circle_users = circle_users.filter(CircleUser.circle_id == circle_id,
                                        CircleUser.is_join == 1,
                                        Users.state == UserState.normal.value)
     circle_users = circle_users.options(joinedload(CircleUser.circle),
-                                        joinedload(CircleUser.users).contains_eager(Users.trips))
+                                        joinedload(CircleUser.users))
     circle_users = circle_users.all()
-    res["circle_info"] = circle_users[0].circle.to_json()
+    if not circle_users:
+        return custom(msg="数据异常,请重新刷新!")
+    user_ids = db.session.query(CircleUser.user_id).join(CircleUser.users).\
+        filter(CircleUser.circle_id == circle_id,
+               CircleUser.is_join == 1,
+               Users.state == UserState.normal.value).subquery()
+    circle = circle_users[0].circle
+    user_trips = UserTrip.query.filter(UserTrip.trip_date == query_date,
+                                       UserTrip.user_id.in_(user_ids)).\
+        order_by(UserTrip.start_time).all()
+    res["circle_info"] = circle.to_json()
     circle_user_dict = {}
     for circle_user in circle_users:
-        circle_user_dict[circle_user.user_id] = circle_user.to_json_circle_user_schedule()
+        circle_user_dict[circle_user.user_id] = circle_user.to_json_user()
+        circle_user_dict[circle_user.user_id].update({"trip_info": []})
+    for user_trip in user_trips:
+        circle_user_dict[user_trip.user_id]["trip_info"].append(user_trip.to_json())
     res["circle_user_info"] = circle_user_dict
     return succeed(data=res)

@@ -15,8 +15,8 @@ class Circle(BaseModelUuidPk):
 
     name = db.Column(db.String(50), nullable=False, comment="名称")
     describe = db.Column(db.String(255), comment="描述")
-    display_day = db.Column(db.Integer, default=1, comment="显示天数")
-    format_type = db.Column(db.Integer, default=1, comment="格式类型 1 天,2 上下午,3 小时")
+    display_day = db.Column(db.Integer, default=1, comment="显示天数(字段未使用)")
+    format_type = db.Column(db.Integer, default=1, comment="格式类型 1 天,2 上下午,3 小时(字段未使用)")
 
 
 class CircleUser(BaseModelIntPk):
@@ -35,10 +35,10 @@ class CircleUser(BaseModelIntPk):
             res["circle_info"] = self.circle.to_json()
         return res
 
-    def to_json_circle_user_schedule(self, exclude_list=()):
+    def to_json_user(self, exclude_list=()):
         res = self.to_json(exclude_list=exclude_list)
         if self.users:
-            res["user_info"] = self.users.to_json_trip()
+            res["user_info"] = self.users.to_json()
         return res
 
 
