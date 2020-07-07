@@ -274,24 +274,25 @@ def user_create_trip(trip_id, trip_date, start_time, end_time, name, is_adjust, 
 @user_required
 @check_request_params(
     start_time=("start_time", True, CheckType.datetime),
-    end_time=("end_time", True, CheckType.datetime)
+    end_time=("end_time", True, CheckType.datetime),
+    query_user_id=("query_user_id", False, CheckType.other)
 )
-def user_query_trip(start_time, end_time):
+def user_query_trip(start_time, end_time, query_user_id):
     res = {}
-    user_trips = UserTrip.query.filter(UserTrip.user_id == current_user.object_id,
+    if query_user_id:
+        user_id = query_user_id
+    else:
+        user_id = current_user.object_id
+    user_trips = UserTrip.query.filter(UserTrip.user_id == user_id,
                                        UserTrip.start_time >= start_time,
                                        UserTrip.end_time <= end_time,
                                        UserTrip.is_valid == 1).\
         order_by(UserTrip.start_time).all()
-    user_trip_dates = db.session.query(distinct(UserTrip.trip_date)).filter(UserTrip.user_id == current_user.object_id,
-                                                                            UserTrip.start_time >= start_time,
-                                                                            UserTrip.end_time <= end_time,
-                                                                            UserTrip.is_valid == 1).\
-        order_by(UserTrip.trip_date).all()
-    for trip_date in user_trip_dates:
-        res[trip_date[0].strftime("%Y-%m-%d")] = []
     for trip in user_trips:
-        res[trip.trip_date.strftime("%Y-%m-%d")].append(trip.to_json())
+        if res.get(trip.trip_date.strftime("%Y-%m-%d")):
+            res[trip.trip_date.strftime("%Y-%m-%d")].append(trip.to_json())
+        else:
+            res[trip.trip_date.strftime("%Y-%m-%d")] = [trip.to_json()]
     response = []
     for k in sorted(res.keys()):
         response.append({k: res[k]})
