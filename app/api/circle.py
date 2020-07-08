@@ -205,3 +205,26 @@ def circle_in_circle_user_schedule(circle_id, query_date):
         circle_user_dict[user_trip.user_id]["trip_info"].append(user_trip.to_json())
     res["circle_user_info"] = circle_user_dict
     return succeed(data=res)
+
+
+# 组织者添加圈内所有用户日程
+@api.route("/circle/add_circle_schedule", methods=["POST"])
+@user_required
+@check_request_params(
+    circle_id=("circle_id", True, CheckType.other),
+    trip_date=("trip_date", True, CheckType.date),
+    start_time=("start_time", True, CheckType.datetime),
+    end_time=("end_time", True, CheckType.datetime),
+    trip_name=("trip_name", True, CheckType.other)
+)
+def circle_add_circle_schedule(circle_id, trip_date, start_time, end_time, trip_name):
+    circle_users = db.session.query(CircleUser.user_id).filter(CircleUser.circle_id == circle_id)
+    sub_circle_users = circle_users.subquery()
+    users_trip = UserTrip.query.filter(UserTrip.user_id.in_(sub_circle_users),
+                                       UserTrip.start_time >= start_time,
+                                       UserTrip.end_time <= end_time,
+                                       UserTrip.is_adjust == 0).all()
+    if users_trip:
+        return custom(msg="添加日程与用户日程冲突,不能添加!")
+
+

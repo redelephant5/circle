@@ -56,7 +56,7 @@ class UserTrip(BaseModelUuidPk):
 
     __tablename__ = "user_trip"
     user_id = db.Column(db.String(32), db.ForeignKey("users.object_id"), nullable=False)
-    trip_date = db.Column(db.Date, default=date.today, comment="日程日期")
+    # trip_date = db.Column(db.Date, default=date.today, comment="日程日期")
     start_time = db.Column(db.DateTime, default=datetime.now, server_default=func.now(),
                            comment="日程开始时间")
     end_time = db.Column(db.DateTime, default=datetime.now, server_default=func.now(),
