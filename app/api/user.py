@@ -13,9 +13,9 @@ from sqlalchemy import distinct, or_, and_
 
 from app import db
 from app.api import api
-from app.models import Users, UserTrip, UserFriend
+from app.models import Users, UserTrip, UserFriend, Notification, NotificationDetail
 from app.decorators import check_request_params, user_required, current_user
-from app.enum import CheckType, UserState
+from app.enum import CheckType, UserState, NotifyType
 from app.utils.model_util import md5
 from app.reponse import usually, usually_with_callback, custom, succeed
 
@@ -177,7 +177,27 @@ def user_add_friend(friend_id, content):
     usertofriend.content = content
     usertofriend.flag = 3
     db.session.add_all([userfriend, usertofriend])
-    return usually(msg="已申请!")
+
+    def callback(user, friend):
+        title = "添加好友通知"
+        content = "用户:{} 请求添加好友".format(user.user_name)
+        notify = Notification(types=NotifyType.friend.value,
+                              sender_id=user.object_id,
+                              title=title,
+                              content=content)
+        notify_detail = NotificationDetail(user_id=friend.user_id,
+                                           extra={"friend_id": friend.friend_id})
+        notify_detail.notify = notify
+        db.session.add_all([notify, notify_detail])
+        try:
+            db.session.commit()
+            return 'ok'
+        except Exception as err:
+            print(err)
+            db.session.rollback()
+            return 'err'
+
+    return usually_with_callback(msg="已申请", callback=callback, parms=(current_user, usertofriend,))
 
 
 @api.route("/user/my_friend", methods=["GET"])
@@ -216,7 +236,7 @@ def user_other_flag_friend(flag=False):
         return succeed(data=res)
 
 
-@api.route("/user/process_flag_friend", methods=["POST"])
+@api.route("/user/process_flag_friend", methods=["GET", "POST"])
 @user_required
 @check_request_params(
     friend_id=("friend_id", True, CheckType.other),
@@ -273,11 +293,13 @@ def user_create_trip(trip_id, start_time, end_time, name, is_adjust, is_see):
 @api.route("/user/query_trip", methods=["GET"])
 @user_required
 @check_request_params(
-    start_time=("start_time", True, CheckType.datetime),
-    end_time=("end_time", True, CheckType.datetime),
+    start_time=("start_time", True, CheckType.date),
+    end_time=("end_time", True, CheckType.date),
     query_user_id=("query_user_id", False, CheckType.other)
 )
 def user_query_trip(start_time, end_time, query_user_id):
+    if start_time > end_time:
+        return custom(msg="开始日期不能大于结束日期")
     res = {}
     if query_user_id:
         user_id = query_user_id
@@ -287,28 +309,23 @@ def user_query_trip(start_time, end_time, query_user_id):
                                        or_(
                                            and_(
                                                UserTrip.start_time >= start_time,
-                                               UserTrip.end_time <= end_time
+                                               UserTrip.end_time < end_time + timedelta(days=1)
                                            ),
                                            and_(
                                                UserTrip.start_time <= start_time,
-                                               UserTrip.end_time >= end_time
+                                               UserTrip.end_time > end_time + timedelta(days=1)
                                            )
                                        ),
                                        UserTrip.is_valid == 1).\
         order_by(UserTrip.start_time).all()
-    mid_date = (end_time.date() - start_time.date()).days
+    mid_date = (end_time - start_time).days
     for m_date in range(mid_date + 1):
-        res_date = start_time.date() + timedelta(days=m_date)
+        res_date = start_time + timedelta(days=m_date)
         res[res_date.strftime("%Y-%m-%d")] = []
     for key, value in res.items():
         for user_trip in user_trips:
-            if user_trip.start_time <= datetime.strptime(key, "%Y-%m-%d") <= user_trip.end_time:
+            if user_trip.start_time.date() <= datetime.strptime(key, "%Y-%m-%d").date() <= user_trip.end_time.date():
                 res[key].append(user_trip.to_json())
-    # for trip in user_trips:
-    #     if res.get(start_time.strftime("%Y-%m-%d")):
-    #         res[trip.start_time.strftime("%Y-%m-%d")].append(trip.to_json())
-    #     else:
-    #         res[trip.start_time.strftime("%Y-%m-%d")] = [trip.to_json()]
     response = []
     for k in sorted(res.keys()):
         response.append({k: res[k]})
@@ -324,5 +341,16 @@ def user_delete_trip(trip_id):
     trip = UserTrip.query.get(trip_id)
     if not trip:
         return custom(msg="该日程不存在!")
+    if trip.schedule_source == 2:
+        if trip.is_join == 1:
+            return custom(msg="该日程为圈内日程不能删除!")
+        else:
+            user_notify = NotificationDetail.query.join(Notification)
+            user_notify = user_notify.filter(NotificationDetail.user_id == current_user.object_id,
+                                             NotificationDetail.is_handle == 0,
+                                             NotificationDetail.extra['trip_id'] == trip_id,
+                                             Notification.types == NotifyType.schedule.value).first()
+            if user_notify:
+                return custom(msg="该行程还未进行处理,请处理后进行删除!")
     db.session.delete(trip)
     return usually(msg="日程已删除!")

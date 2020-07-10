@@ -100,3 +100,30 @@ class UserFriend(BaseModelIntPk):
 
 Users.friend = db.relationship("UserFriend", backref="user", foreign_keys="UserFriend.user_id")
 Users.to_friend = db.relationship("UserFriend", backref="user_friend", foreign_keys="UserFriend.friend_id")
+
+
+class Notification(BaseModelUuidPk):
+    types = db.Column(db.Integer, default=0, index=True, comment="消息类型.0:系统消息,1:添加好友,2:添加圈,3:添加日程")
+    sender_id = db.Column(db.String(32), db.ForeignKey("users.object_id"), comment='发送人id')
+    title = db.Column(db.String(100), comment="通知标题")
+    content = db.Column(db.String(255), comment="通知内容")
+
+
+Users.notify = db.relationship("Notification", backref="user")
+
+
+class NotificationDetail(BaseModelUuidPk):
+
+    __tablename__ = "notification_detail"
+    user_id = db.Column(db.String(32), db.ForeignKey("users.object_id"), comment="接收人id")
+    notification_id = db.Column(db.String(32), db.ForeignKey("notification.object_id"), comment="通知单id")
+    extra = db.Column(db.JSON, comment="扩展字段")
+    is_read = db.Column(db.SmallInteger, default=0, comment="是否已读 0 为读 1 已读")
+    is_handle = db.Column(db.SmallInteger, default=0, comment="是否处理 0 未处理 1处理")
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "notification_id", name="uix_user_notification"),
+    )
+
+
+Notification.detail = db.relationship("NotificationDetail", backref="notify")
