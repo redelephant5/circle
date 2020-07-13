@@ -154,7 +154,7 @@ def user_add_friend(friend_id, content):
 
     query_firend = Users.query.filter_by(object_id=friend_id, state=UserState.normal.value).first()
     if not query_firend:
-        return custom(msg="用户已不存在或已注销!")
+        return custom(msg="用户不存在或已注销!")
     friend = UserFriend.query.filter(UserFriend.user_id == current_user.object_id,
                                      UserFriend.friend_id == friend_id)
     friend_res = friend.filter(UserFriend.flag == 2).first()
@@ -240,7 +240,7 @@ def user_other_flag_friend(flag=False):
 @user_required
 @check_request_params(
     friend_id=("friend_id", True, CheckType.other),
-    flag=("flag", True, CheckType.int)
+    flag=("flag", True, CheckType.int)  # 1 同意  2 拒绝
 )
 def user_process_flag_friend(friend_id, flag):
 
@@ -251,15 +251,40 @@ def user_process_flag_friend(friend_id, flag):
                UserFriend.flag == 3)
     user = user.options(joinedload(UserFriend.user_friend)).first()
     if not user:
-        return custom(msg="该用户不存在或已注销!")
+        return custom(msg="该用户不存在或已是好友!")
     user.flag = flag
     friend = UserFriend.query.filter_by(user_id=friend_id, friend_id=current_user.object_id, flag=0).first()
     if not friend:
         return custom(msg="用户异常!")
     friend.flag = flag
+    notification_detail = NotificationDetail.query.filter(NotificationDetail.user_id == current_user.object_id,
+                                                          NotificationDetail.extra["friend_id"] == friend_id).first()
+    if notification_detail:
+        notification_detail.is_read = 1
+        notification_detail.is_handle = 1
+    content = "{}用户同意您的好友申请!".format(current_user.user_name)
     if flag == 2:
         friend.verify_message = "对方已拒绝"
-    return usually(msg="添加成功!")
+        content = "{}用户拒绝您的好友申请!".format(current_user.user_name)
+
+    def callback(sender_id, user_id, content):
+        title = "用户好友处理通知"
+        notify = Notification(types=1,
+                              sender_id=sender_id,
+                              title=title,
+                              content=content)
+        notify_detail = NotificationDetail(user_id=user_id,
+                                           is_handle=1)
+        notify_detail.notify = notify
+        db.session.add_all([notify, notify_detail])
+        try:
+            db.session.commit()
+            return 'ok'
+        except Exception as err:
+            print(err)
+            db.session.rollback()
+            return 'err'
+    return usually_with_callback(msg="处理成功", callback=callback, parms=(current_user.object_id, friend_id, content,))
 
 
 # 新增及更新日程
@@ -354,3 +379,53 @@ def user_delete_trip(trip_id):
                 return custom(msg="该行程还未进行处理,请处理后进行删除!")
     db.session.delete(trip)
     return usually(msg="日程已删除!")
+
+
+# 圈内行程处理
+@api.route("/user/processing_trip_in_circle", methods=["POST"])
+@user_required
+@check_request_params(
+    trip_id=("trip_id", True, CheckType.other),
+    flag=("flag", True, CheckType.int)  # 0 拒绝, 1 同意
+)
+def user_processing_trip_in_circle(trip_id, flag):
+    trip = UserTrip.query.filter_by(object_id=trip_id,
+                                    schedule_source=2,
+                                    is_join=0).first()
+    if not trip:
+        return custom(msg="该日程不存在!")
+    trip.is_join = flag
+    msg = "该行程已处理."
+    db.session.add(trip)
+    notify_detail = NotificationDetail.query.join(NotificationDetail.notify)
+    notify_detail = notify_detail.filter(NotificationDetail.user_id == current_user.object_id,
+                                         NotificationDetail.extra['trip_id'] == trip_id,
+                                         NotificationDetail.is_handle == 0)
+    notify_detail = notify_detail.options(joinedload(NotificationDetail.notify)).first()
+    if notify_detail:
+        notify_detail.is_read = 1
+        notify_detail.is_handle = 1
+        title = "用户日程处理通知"
+        if flag == 1:
+            content = "{}用户已添加您创建的{},时间为{}至{}的日程".\
+                format(current_user.user_name, trip.name,
+                       trip.start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                       trip.end_time.strftime("%Y-%m-%d %H:%M:%S"),)
+            msg = "行程已添加."
+        else:
+            content = "{}用户拒绝您创建的{},时间为{}至{}的日程". \
+                format(current_user.user_name, trip.name,
+                       trip.start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                       trip.end_time.strftime("%Y-%m-%d %H:%M:%S"), )
+            db.session.delete(trip)
+            msg = "行程已拒绝并删除."
+        notify = Notification(types=3,
+                              sender_id=current_user.object_id,
+                              title=title,
+                              content=content)
+        touser_notify_detail = NotificationDetail(user_id=notify_detail.notify.sender_id,
+                                                  is_read=0,
+                                                  is_handle=1)
+        touser_notify_detail.notify = notify
+        db.session.add_all([notify_detail, notify, touser_notify_detail])
+    return usually(msg=msg)

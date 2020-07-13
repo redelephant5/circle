@@ -92,21 +92,53 @@ def circle_update_circle(circle_id, circle_name, describe):
 @user_required
 @check_request_params(
     circle_id=("circle_id", True, CheckType.other),
-    flag=("flag", True, CheckType.int)
+    flag=("flag", True, CheckType.int)   # 1 同意  2 拒绝
 )
 def circle_process_circle(circle_id, flag):
 
     circle_user = CircleUser.query.join(CircleUser.circle)
+    circle_user = circle_user.options(joinedload(CircleUser.circle))
     circle_user = circle_user.filter(Circle.is_valid == 1,
                                      CircleUser.circle_id == circle_id,
                                      CircleUser.user_id == current_user.object_id,
-                                     CircleUser.is_join == 0
+                                     CircleUser.is_join.in_([0, 3])
                                      ).first()
     if not circle_user:
         return custom(msg="该圈已不存在或已加入!")
     circle_user.is_join = flag
     db.session.add(circle_user)
-    return usually(msg="ok")
+    notify_detail = NotificationDetail.query.join(NotificationDetail.notify)
+    notify_detail = notify_detail.options(joinedload(NotificationDetail.notify))
+    notify_detail = notify_detail.filter(NotificationDetail.user_id == current_user.object_id,
+                                         NotificationDetail.extra['circle_id'] == circle_id,
+                                         NotificationDetail.is_handle == 0).first()
+    if notify_detail:
+        notify_detail.is_read = 1
+        notify_detail.is_handle = 1
+        db.session.add(notify_detail)
+    content = "{}用户同意加入{}".format(current_user.user_name, circle_user.circle.name)
+    if flag == 2:
+        content = "{}用户拒绝加入{}".format(current_user.user_name, circle_user.circle.name)
+
+    def callback(sender_id, user_id, content):
+        title = "用户圈处理通知"
+        notify = Notification(types=2,
+                              sender_id=sender_id,
+                              title=title,
+                              content=content)
+        noti_detail = NotificationDetail(user_id=user_id,
+                                         is_handle=1)
+        noti_detail.notify = notify
+        db.session.add_all([notify, noti_detail])
+        try:
+            db.session.commit()
+            return 'ok'
+        except Exception as err:
+            print(err)
+            db.session.rollback()
+            return 'err'
+    return usually_with_callback(msg='处理成功', callback=callback,
+                                 parms=(current_user.object_id, notify_detail.notify.sender_id, content))
 
 
 @api.route("/circle/add_friend_in_circle", methods=["POST"])
