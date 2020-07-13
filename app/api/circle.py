@@ -104,7 +104,7 @@ def circle_process_circle(circle_id, flag):
                                      CircleUser.is_join.in_([0, 3])
                                      ).first()
     if not circle_user:
-        return custom(msg="该圈已不存在或已加入!")
+        return custom(msg="该圈不存在或已加入!")
     circle_user.is_join = flag
     db.session.add(circle_user)
     notify_detail = NotificationDetail.query.join(NotificationDetail.notify)
@@ -151,10 +151,26 @@ def circle_add_friend_in_circle(circle_id, friend_ids):
     circle = Circle.query.filter_by(object_id=circle_id).first()
     if not circle:
         return custom(msg="该圈不存在!")
-    circle_users = CircleUser.query.filter(CircleUser.circle_id == circle_id,
-                                           CircleUser.user_id.in_(friend_ids)).all()
-    if circle_users:
-        return custom(msg="已有好友加入该圈!")
+    circle_users = CircleUser.query.join(CircleUser.users)
+    circle_users = circle_users.options(joinedload(CircleUser.users))
+    circle_users = circle_users.filter(CircleUser.circle_id == circle_id,
+                                       CircleUser.user_id.in_(friend_ids))
+    join_circle_users = circle_users.filter(CircleUser.is_join == 1).all()
+    if join_circle_users:
+        user_names = [circle_user.users.user_name for circle_user in join_circle_users]
+        str_user_names = ','.join(user_names)
+        return custom(msg="好友{}已加入该圈!".format(str_user_names))
+    realy_join_circle_users = circle_users.filter(CircleUser.is_join == 0).all()
+    if realy_join_circle_users:
+        user_names = [circle_user.users.user_name for circle_user in realy_join_circle_users]
+        str_user_names = ','.join(user_names)
+        return custom(msg="好友{}已申请加入该圈,待对方同意,不要重复申请!".format(str_user_names))
+    refuse_users = []
+    circle_refuse_users = circle_users.filter(CircleUser.is_join == 2).all()
+    for refuse_user in circle_refuse_users:
+        refuse_user.is_join = 0
+        refuse_users.append(refuse_user.user_id)
+        db.session.add(refuse_user)
     title = "添加圈通知"
     content = "好友{},邀请您加入{}圈.".format(current_user.user_name, circle.name)
     notify = Notification(types=NotifyType.circle.value,
@@ -163,12 +179,14 @@ def circle_add_friend_in_circle(circle_id, friend_ids):
                           content=content)
     db.session.add(notify)
     for friend in friend_ids:
-        circle_user = CircleUser(circle_id=circle.object_id, user_id=friend)
-        circle_user.circle = circle
+        if friend not in refuse_users:
+            circle_user = CircleUser(circle_id=circle.object_id, user_id=friend)
+            circle_user.circle = circle
+            db.session.add(circle_user)
         notify_detail = NotificationDetail(user_id=friend,
                                            extra={"circle_id": circle_id})
         notify_detail.notify = notify
-        db.session.add_all([circle_user, notify_detail])
+        db.session.add(notify_detail)
     return usually(msg="已添加")
 
 
@@ -299,7 +317,20 @@ def circle_add_circle_schedule(circle_id, start_time, end_time, trip_name):
                                        UserTrip.is_adjust == 0,
                                        UserTrip.is_join == 1).all()
     if users_trip:
-        return custom(msg="添加日程与用户日程冲突,不能添加!")
+        return custom(msg="添加行程与用户行程冲突,不能添加!")
+    users_join_trip = UserTrip.query.filter(UserTrip.user_id.in_(sub_circle_users),
+                                            or_(
+                                                and_(
+                                                    UserTrip.start_time <= start_time,
+                                                    UserTrip.end_time >= start_time
+                                                ),
+                                                and_(
+                                                    UserTrip.start_time <= end_time,
+                                                    UserTrip.end_time >= end_time)),
+                                            UserTrip.schedule_source == 2,
+                                            UserTrip.is_join == 0).all()
+    if users_join_trip:
+        return custom(msg="用户有未处理的团队行程,不能添加!")
     title = "圈内日程添加通知"
     content = "{}圈的组织者{}添加了{}至{}的{}日程安排,请知悉!".\
         format(circle.name, current_user.user_name,

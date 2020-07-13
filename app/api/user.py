@@ -157,6 +157,9 @@ def user_add_friend(friend_id, content):
         return custom(msg="用户不存在或已注销!")
     friend = UserFriend.query.filter(UserFriend.user_id == current_user.object_id,
                                      UserFriend.friend_id == friend_id)
+    applied_friend = friend.filter(UserFriend.flag == 0).first()
+    if applied_friend:
+        return custom(msg="已申请,待对方添加!")
     friend_res = friend.filter(UserFriend.flag == 2).first()
     if friend_res:
         friend_res.flag = 0
@@ -429,3 +432,85 @@ def user_processing_trip_in_circle(trip_id, flag):
         touser_notify_detail.notify = notify
         db.session.add_all([notify_detail, notify, touser_notify_detail])
     return usually(msg=msg)
+
+
+# 用户未读消息及未处理消息
+@api.route("/user/un_notice_count", methods=["GET"])
+@user_required
+def user_un_notice_count():
+    notify_detail = NotificationDetail.query.filter_by(user_id=current_user.object_id)
+    unread_notice = notify_detail.filter_by(is_read=0).count()
+    unprocess_noticat = notify_detail.filter_by(is_handle=0).count()
+    return succeed(data={"unread_count": unread_notice, "unprocess_count": unprocess_noticat})
+
+
+# 用户读消息及处理消息详情
+@api.route("/user/notice_detail", methods=["GET"])
+@user_required
+@check_request_params(
+    flag=("flag", True, CheckType.int)  # 1 读消息  2 处理消息
+)
+def user_notice_detail(flag):
+    res = []
+    notify_details = NotificationDetail.query.join(NotificationDetail.notify)
+    notify_details = notify_details.filter(NotificationDetail.user_id == current_user.object_id)
+    notify_details = notify_details.options(joinedload(NotificationDetail.notify))
+    if flag == 2:
+        notify_details = notify_details.filter(NotificationDetail.is_handle == 0)
+    for notify_detail in notify_details:
+        res.append(notify_detail.to_json_with_notification())
+    return succeed(data=res)
+
+
+# 用户读消息
+@api.route("/user/read_notice_detail", methods=["GET"])
+@user_required
+@check_request_params(
+    notify_detail_id=("notify_detail_id", True, CheckType.other)
+)
+def user_read_notice_detail(notify_detail_id):
+    notify_detail = NotificationDetail.query.join(NotificationDetail.notify)
+    notify_detail = notify_detail.filter(NotificationDetail.object_id == notify_detail_id,
+                                         NotificationDetail.user_id == current_user.object_id)
+    notify_detail = notify_detail.options(joinedload(NotificationDetail.notify)).first()
+    if not notify_detail:
+        return custom(msg='消息不存在!')
+    notify_detail.is_read = 1
+    return usually(data=notify_detail.to_json_with_notification())
+
+
+# 用户处理消息
+@api.route("/user/process_notice_detail", methods=["POST"])
+@user_required
+@check_request_params(
+    notify_detail_id=("notify_detail_id", True, CheckType.other),
+    flag=("flag", True, CheckType.int)
+)
+def user_process_notice_detail(notify_detail_id, flag):
+    notify_detail = NotificationDetail.query.join(NotificationDetail.notify)
+    notify_detail = notify_detail.filter(NotificationDetail.object_id == notify_detail_id,
+                                         NotificationDetail.user_id == current_user.object_id,
+                                         NotificationDetail.is_handle == 0)
+    notify_detail = notify_detail.options(joinedload(NotificationDetail.notify)).first()
+    if not notify_detail:
+        return custom(msg="该通知不存在或已处理!")
+    if notify_detail.notify.types == 1:
+        friend_id = notify_detail.extra['friend_id']
+        flag = flag
+        user_process_friend = user_process_flag_friend.__wrapped__
+        user_process_friend = user_process_friend.__wrapped__
+        return user_process_friend(friend_id, flag)
+    elif notify_detail.notify.types == 2:
+        circle_id = notify_detail.extra['circle_id']
+        flag = flag
+        from app.api.circle import circle_process_circle as process_circle
+        user_process_circle = process_circle.__wrapped__.__wrapped__
+        return user_process_circle(circle_id, flag)
+    elif notify_detail.notify.types == 3:
+        # todo 过期行程添加问题
+        trip_id = notify_detail.extra['trip_id']
+        flag = flag
+        if flag == 2:
+            flag = 0
+        processing_trip_in_circle = user_processing_trip_in_circle.__wrapped__.__wrapped__
+        return processing_trip_in_circle(trip_id, flag)

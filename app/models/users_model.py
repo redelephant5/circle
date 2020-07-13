@@ -125,5 +125,11 @@ class NotificationDetail(BaseModelUuidPk):
         db.UniqueConstraint("user_id", "notification_id", name="uix_user_notification"),
     )
 
+    def to_json_with_notification(self):
+        res = self.to_json()
+        if self.notify:
+            res["notify_info"] = self.notify.to_json()
+        return res
+
 
 Notification.detail = db.relationship("NotificationDetail", backref="notify")
