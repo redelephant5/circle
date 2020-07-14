@@ -292,9 +292,9 @@ def circle_in_circle_user_schedule(circle_id, query_date):
     trip_name=("trip_name", True, CheckType.other)
 )
 def circle_add_circle_schedule(circle_id, start_time, end_time, trip_name):
-    to_date = datetime.now().date()
-    if start_time.date() < to_date:
-        return custom(msg="不可以添加今日之前日程")
+    today_time = datetime.now()
+    if end_time < today_time:
+        return custom(msg="结束时间小于当前时间不能进行添加!")
     circle = Circle.query.get(circle_id)
     if not circle:
         return custom(msg="该圈已不存在!")

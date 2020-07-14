@@ -378,7 +378,7 @@ def user_delete_trip(trip_id):
                                              NotificationDetail.is_handle == 0,
                                              NotificationDetail.extra['trip_id'] == trip_id,
                                              Notification.types == NotifyType.schedule.value).first()
-            if user_notify:
+            if user_notify and trip.end_time > datetime.now():
                 return custom(msg="该行程还未进行处理,请处理后进行删除!")
     db.session.delete(trip)
     return usually(msg="日程已删除!")
@@ -397,6 +397,9 @@ def user_processing_trip_in_circle(trip_id, flag):
                                     is_join=0).first()
     if not trip:
         return custom(msg="该日程不存在!")
+    today_time = datetime.now()
+    if trip.end_time <= today_time and flag == 1:
+        return custom(msg="行程已过期,不能进行添加!")
     trip.is_join = flag
     msg = "该行程已处理."
     db.session.add(trip)
@@ -507,7 +510,6 @@ def user_process_notice_detail(notify_detail_id, flag):
         user_process_circle = process_circle.__wrapped__.__wrapped__
         return user_process_circle(circle_id, flag)
     elif notify_detail.notify.types == 3:
-        # todo 过期行程添加问题
         trip_id = notify_detail.extra['trip_id']
         flag = flag
         if flag == 2:
