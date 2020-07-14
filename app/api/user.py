@@ -516,3 +516,20 @@ def user_process_notice_detail(notify_detail_id, flag):
             flag = 0
         processing_trip_in_circle = user_processing_trip_in_circle.__wrapped__.__wrapped__
         return processing_trip_in_circle(trip_id, flag)
+
+
+# 用户删除消息
+@api.route("/user/delete_notice", methods=["POST"])
+@user_required
+@check_request_params(
+    notify_detail_id=("notify_detail_id", True, CheckType.other)
+)
+def user_delete_notice(notify_detail_id):
+    notify_detail = NotificationDetail.query.filter_by(user_id=current_user.object_id,
+                                                       object_id=notify_detail_id).first()
+    if not notify_detail:
+        return custom(msg='消息不存在!')
+    elif notify_detail.is_handle == 0:
+        return custom(msg='消息还未处理不允许删除!')
+    db.session.delete(notify_detail)
+    return usually(msg='删除成功!')
