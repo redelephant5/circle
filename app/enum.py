@@ -32,4 +32,4 @@ class NotifyType(IntEnum):
     system = 0
     friend = 1
     circle = 2
-    schedule = 3
+    trip = 3

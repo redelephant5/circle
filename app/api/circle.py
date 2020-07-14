@@ -236,13 +236,13 @@ def circle_quit_circle(circle_id):
         return usually(msg="已退出!")
 
 
-@api.route("/circle/in_circle_user_schedule", methods=["GET"])
+@api.route("/circle/in_circle_user_trip", methods=["GET"])
 @user_required
 @check_request_params(
     circle_id=("circle_id", True, CheckType.other),
     query_date=("query_date", True, CheckType.date)
 )
-def circle_in_circle_user_schedule(circle_id, query_date):
+def circle_in_circle_user_trip(circle_id, query_date):
     res = {}
     circle_users = CircleUser.query.join(CircleUser.users).join(CircleUser.circle)
     circle_users = circle_users.filter(CircleUser.circle_id == circle_id,
@@ -282,8 +282,8 @@ def circle_in_circle_user_schedule(circle_id, query_date):
     return succeed(data=res)
 
 
-# 组织者添加圈内所有用户日程
-@api.route("/circle/add_circle_schedule", methods=["POST"])
+# 组织者添加圈内所有用户行程
+@api.route("/circle/add_circle_trip", methods=["POST"])
 @user_required
 @check_request_params(
     circle_id=("circle_id", True, CheckType.other),
@@ -291,7 +291,7 @@ def circle_in_circle_user_schedule(circle_id, query_date):
     end_time=("end_time", True, CheckType.datetime),
     trip_name=("trip_name", True, CheckType.other)
 )
-def circle_add_circle_schedule(circle_id, start_time, end_time, trip_name):
+def circle_add_circle_trip(circle_id, start_time, end_time, trip_name):
     today_time = datetime.now()
     if end_time < today_time:
         return custom(msg="结束时间小于当前时间不能进行添加!")
@@ -303,7 +303,7 @@ def circle_add_circle_schedule(circle_id, start_time, end_time, trip_name):
     circle_organizer = circle_users.filter(CircleUser.user_id == current_user.object_id,
                                            CircleUser.is_organizer == 1).first()
     if not circle_organizer:
-        return custom(msg="非圈组织者不能添加全用户日程!")
+        return custom(msg="非圈组织者不能添加全用户行程!")
     sub_circle_users = circle_users.subquery()
     users_trip = UserTrip.query.filter(UserTrip.user_id.in_(sub_circle_users),
                                        or_(
@@ -327,15 +327,15 @@ def circle_add_circle_schedule(circle_id, start_time, end_time, trip_name):
                                                 and_(
                                                     UserTrip.start_time <= end_time,
                                                     UserTrip.end_time >= end_time)),
-                                            UserTrip.schedule_source == 2,
+                                            UserTrip.trip_source == 2,
                                             UserTrip.is_join == 0).all()
     if users_join_trip:
         return custom(msg="用户有未处理的团队行程,不能添加!")
-    title = "圈内日程添加通知"
-    content = "{}圈的组织者{}添加了{}至{}的{}日程安排,请知悉!".\
+    title = "圈内行程添加通知"
+    content = "{}圈的组织者{}添加了{}至{}的{}行程安排,请知悉!".\
         format(circle.name, current_user.user_name,
                start_time.strftime('%Y-%m-%d %H:%M:%S'), end_time.strftime('%Y-%m-%d %H:%M:%S'), trip_name)
-    notify = Notification(types=NotifyType.schedule.value,
+    notify = Notification(types=NotifyType.trip.value,
                           sender_id=current_user.object_id,
                           title=title,
                           content=content)
@@ -349,7 +349,7 @@ def circle_add_circle_schedule(circle_id, start_time, end_time, trip_name):
         user_trip.name = trip_name
         user_trip.is_adjust = 0
         user_trip.is_see = 1
-        user_trip.schedule_source = 2
+        user_trip.trip_source = 2
         if circle_user[0] == current_user.object_id:
             user_trip.is_join = 1
             db.session.add(user_trip)
@@ -364,4 +364,4 @@ def circle_add_circle_schedule(circle_id, start_time, end_time, trip_name):
             notify_detail.notify = notify
             db.session.add(notify_detail)
 
-    return usually(msg="添加日程成功!")
+    return usually(msg="添加行程成功!")

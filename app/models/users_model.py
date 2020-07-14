@@ -56,16 +56,16 @@ class UserTrip(BaseModelUuidPk):
 
     __tablename__ = "user_trip"
     user_id = db.Column(db.String(32), db.ForeignKey("users.object_id"), nullable=False)
-    # trip_date = db.Column(db.Date, default=date.today, comment="日程日期")
+    # trip_date = db.Column(db.Date, default=date.today, comment="行程日期")
     start_time = db.Column(db.DateTime, default=datetime.now, server_default=func.now(),
-                           comment="日程开始时间")
+                           comment="行程开始时间")
     end_time = db.Column(db.DateTime, default=datetime.now, server_default=func.now(),
-                         comment="日程结束时间")
-    name = db.Column(db.String(255), default="就不告诉你", comment="日程名称")
+                         comment="行程结束时间")
+    name = db.Column(db.String(255), default="就不告诉你", comment="行程名称")
     is_adjust = db.Column(db.Boolean, default=True, comment="是否可调整")
     is_see = db.Column(db.Boolean, default=True, comment="是否可见")
-    schedule_source = db.Column(db.Integer, default=1, comment="日程来源 1 本人 2 团队")
-    is_join = db.Column(db.Boolean, default=True, comment="是否加入日程")
+    trip_source = db.Column(db.Integer, default=1, comment="行程来源 1 本人 2 团队")
+    is_join = db.Column(db.Boolean, default=True, comment="是否加入行程")
 
     def to_json(self, exclude_list=()):
         res = super(UserTrip, self).to_json(exclude_list=exclude_list)
@@ -103,7 +103,7 @@ Users.to_friend = db.relationship("UserFriend", backref="user_friend", foreign_k
 
 
 class Notification(BaseModelUuidPk):
-    types = db.Column(db.Integer, default=0, index=True, comment="消息类型.0:系统消息,1:添加好友,2:添加圈,3:添加日程")
+    types = db.Column(db.Integer, default=0, index=True, comment="消息类型.0:系统消息,1:添加好友,2:添加圈,3:添加行程")
     sender_id = db.Column(db.String(32), db.ForeignKey("users.object_id"), comment='发送人id')
     title = db.Column(db.String(100), comment="通知标题")
     content = db.Column(db.String(255), comment="通知内容")

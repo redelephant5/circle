@@ -290,7 +290,7 @@ def user_process_flag_friend(friend_id, flag):
     return usually_with_callback(msg="处理成功", callback=callback, parms=(current_user.object_id, friend_id, content,))
 
 
-# 新增及更新日程
+# 新增及更新行程
 @api.route("/user/create_trip", methods=["POST"])
 @user_required
 @check_request_params(
@@ -305,7 +305,7 @@ def user_create_trip(trip_id, start_time, end_time, name, is_adjust, is_see):
     if trip_id:
         user_trip = UserTrip.query.get(trip_id)
         if not user_trip:
-            return custom(msg="日程不存在,不能修改!")
+            return custom(msg="行程不存在,不能修改!")
     else:
         user_trip = UserTrip()
     user_trip.user_id = current_user.object_id
@@ -315,7 +315,7 @@ def user_create_trip(trip_id, start_time, end_time, name, is_adjust, is_see):
     user_trip.is_valid = is_adjust
     user_trip.is_see = is_see
     db.session.add(user_trip)
-    return usually(msg="日程添加成功!")
+    return usually(msg="行程添加成功!")
 
 
 @api.route("/user/query_trip", methods=["GET"])
@@ -368,20 +368,20 @@ def user_query_trip(start_time, end_time, query_user_id):
 def user_delete_trip(trip_id):
     trip = UserTrip.query.get(trip_id)
     if not trip:
-        return custom(msg="该日程不存在!")
-    if trip.schedule_source == 2:
+        return custom(msg="该行程不存在!")
+    if trip.trip_source == 2:
         if trip.is_join == 1:
-            return custom(msg="该日程为圈内日程不能删除!")
+            return custom(msg="该行程为圈内行程不能删除!")
         else:
             user_notify = NotificationDetail.query.join(Notification)
             user_notify = user_notify.filter(NotificationDetail.user_id == current_user.object_id,
                                              NotificationDetail.is_handle == 0,
                                              NotificationDetail.extra['trip_id'] == trip_id,
-                                             Notification.types == NotifyType.schedule.value).first()
+                                             Notification.types == NotifyType.trip.value).first()
             if user_notify and trip.end_time > datetime.now():
                 return custom(msg="该行程还未进行处理,请处理后进行删除!")
     db.session.delete(trip)
-    return usually(msg="日程已删除!")
+    return usually(msg="行程已删除!")
 
 
 # 圈内行程处理
@@ -393,10 +393,10 @@ def user_delete_trip(trip_id):
 )
 def user_processing_trip_in_circle(trip_id, flag):
     trip = UserTrip.query.filter_by(object_id=trip_id,
-                                    schedule_source=2,
+                                    trip_source=2,
                                     is_join=0).first()
     if not trip:
-        return custom(msg="该日程不存在!")
+        return custom(msg="该行程不存在!")
     today_time = datetime.now()
     if trip.end_time <= today_time and flag == 1:
         return custom(msg="行程已过期,不能进行添加!")
@@ -411,15 +411,15 @@ def user_processing_trip_in_circle(trip_id, flag):
     if notify_detail:
         notify_detail.is_read = 1
         notify_detail.is_handle = 1
-        title = "用户日程处理通知"
+        title = "用户行程处理通知"
         if flag == 1:
-            content = "{}用户已添加您创建的{},时间为{}至{}的日程".\
+            content = "{}用户已添加您创建的{},时间为{}至{}的行程".\
                 format(current_user.user_name, trip.name,
                        trip.start_time.strftime("%Y-%m-%d %H:%M:%S"),
                        trip.end_time.strftime("%Y-%m-%d %H:%M:%S"),)
             msg = "行程已添加."
         else:
-            content = "{}用户拒绝您创建的{},时间为{}至{}的日程". \
+            content = "{}用户拒绝您创建的{},时间为{}至{}的行程". \
                 format(current_user.user_name, trip.name,
                        trip.start_time.strftime("%Y-%m-%d %H:%M:%S"),
                        trip.end_time.strftime("%Y-%m-%d %H:%M:%S"), )
