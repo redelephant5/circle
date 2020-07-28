@@ -26,6 +26,7 @@ class DevelopConfig(Config):
 
     SQLALCHEMY_RECORD_QUERIES = True
     SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:mysql@127.0.0.1/circle?charset=utf8mb4'
+    REDIS_URL = "redis://127.0.0.1:6379/0"
 
 
 class TestingConfig(Config):
@@ -37,6 +38,8 @@ class ProductionConfig(Config):
     DEBUG = False
 
     SQLALCHEMY_RECORD_QUERIES = False
+    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:mysql@127.0.0.1/circle?charset=utf8mb4'
+    REDIS_URL = "redis://127.0.0.1:6379/0"
 
 
 config = {

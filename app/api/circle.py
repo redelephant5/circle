@@ -16,7 +16,7 @@ from app.decorators import user_required, check_request_params, current_user
 from app.enum import CheckType, UserState, NotifyType
 from app.models import Circle, CircleUser, Users, UserTrip, Notification, NotificationDetail
 from app.reponse import custom, usually, succeed, usually_with_callback
-from app import db
+from app import db, redis_store
 
 
 @api.route("/circle/create_circle", methods=["POST"])
@@ -365,3 +365,18 @@ def circle_add_circle_trip(circle_id, start_time, end_time, trip_name):
             db.session.add(notify_detail)
 
     return usually(msg="添加行程成功!")
+
+
+# 圈内用户行程变化
+@api.route("/circle/user_trip_changes", methods=["GET"])
+@user_required
+@check_request_params(
+    circle_id=("circle_id", True, CheckType.other)
+)
+def circle_user_trip_changes(circle_id):
+
+    circle_no = redis_store.get("circle_no:" + circle_id)
+    if circle_no:
+        return succeed(msg="圈内行程有更新,请刷新!")
+    else:
+        return custom()

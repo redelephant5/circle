@@ -8,9 +8,11 @@ entrypoints==0.3
 et-xmlfile==1.0.1
 flake8==3.7.8
 Flask==1.1.1
+Flask-Cors==3.0.7
 Flask-Migrate==2.5.2
 Flask-Script==2.0.6
 Flask-SQLAlchemy==2.4.0
+Flask-Redis==0.3.0
 idna==2.8
 itsdangerous==1.1.0
 jdcal==1.4.1

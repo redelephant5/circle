@@ -11,9 +11,9 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import joinedload, contains_eager
 from sqlalchemy import distinct, or_, and_
 
-from app import db
+from app import db, redis_store
 from app.api import api
-from app.models import Users, UserTrip, UserFriend, Notification, NotificationDetail
+from app.models import Users, UserTrip, UserFriend, Notification, NotificationDetail, CircleUser
 from app.decorators import check_request_params, user_required, current_user
 from app.enum import CheckType, UserState, NotifyType
 from app.utils.model_util import md5
@@ -315,7 +315,14 @@ def user_create_trip(trip_id, start_time, end_time, name, is_adjust, is_see):
     user_trip.is_valid = is_adjust
     user_trip.is_see = is_see
     db.session.add(user_trip)
-    return usually(msg="行程添加成功!")
+    circle_user = CircleUser.query.join(CircleUser.circle)
+    circle_user = circle_user.filter(CircleUser.user_id == current_user.object_id,
+                                     CircleUser.is_join == 1).all()
+
+    def callback(circle_user):
+        for circle in circle_user:
+            redis_store.set('circle_no:' + circle.circle_id, '1', ex=3)
+    return usually_with_callback(msg="行程添加成功!", callback=callback, parms=(circle_user,))
 
 
 @api.route("/user/query_trip", methods=["GET"])
