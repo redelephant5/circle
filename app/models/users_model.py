@@ -33,6 +33,8 @@ class Users(BaseModelUuidPk):
     entry_date = db.Column(db.DateTime, nullable=False, default=datetime.now, server_default=func.now(),
                            comment="加入的时间")
     state = db.Column(db.Integer, default=UserState.normal.value, server_default=text('0'), index=True, comment="状态")
+    openid = db.Column(db.String(100), index=True, comment='小程序openid')
+    wx_name = db.Column(db.String(50), comment="微信昵称")
 
     def to_json(self, exclude_list=()):
         res = super(Users, self).to_json(exclude_list=["password"])
