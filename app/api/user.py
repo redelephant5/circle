@@ -122,6 +122,21 @@ def user_logout():
     return usually(msg="用户已注销")
 
 
+# 账号密码登录
+@api.route("/user/login", methods=["POST"])
+@check_request_params(
+    phone=("phone", True, CheckType.other),
+    password=("password", True, CheckType.other)
+)
+def user_login(phone, password):
+    user = Users.query.filter_by(phone=phone, password=md5(password)).first()
+    if not user:
+        return custom(msg="手机号或密码错误!")
+    return succeed(data=user.to_json())
+
+
+# 小程序登录
+
 @api.route("/user/query_users_by_phone", methods=["GET"])
 @user_required
 @check_request_params(
