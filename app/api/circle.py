@@ -364,7 +364,10 @@ def circle_add_circle_trip(circle_id, start_time, end_time, trip_name):
             notify_detail.notify = notify
             db.session.add(notify_detail)
 
-    return usually(msg="添加行程成功!")
+    def callback(circle_id):
+        redis_store.set("circle_no:" + circle_id, '1', ex=3)
+
+    return usually_with_callback(msg="添加行程成功", callback=callback, parms=(circle_id,))
 
 
 # 圈内用户行程变化
