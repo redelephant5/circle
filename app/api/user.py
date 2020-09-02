@@ -7,7 +7,10 @@
 # @Introduction : users
 # dependence
 from datetime import datetime, timedelta
+import json
 
+from flask import current_app
+import requests
 from sqlalchemy.orm import joinedload, contains_eager
 from sqlalchemy import distinct, or_, and_
 
@@ -137,26 +140,37 @@ def user_login(phone, password):
 
 # 小程序登录
 
-@api.route("/user/query_users_by_phone", methods=["GET"])
-@user_required
+@api.route("/user/wx_login", methods=["POST"])
 @check_request_params(
-    phone=("phone", True, CheckType.other)
+    code=("code", True, CheckType.other),
+    encryptedData=("encryptedData", True, CheckType.other),
+    iv=("iv", True, CheckType.other),
+    rawData=("rawData", True, CheckType.json),
+    signature=("signature", True, CheckType.other)
 )
-def user_query_users_by_phone(phone):
-    user = Users.query.filter(Users.phone == phone,
-                              Users.state == UserState.normal.value)
-    phone_user = user.first()
-    if not phone_user:
-        return custom(msg="用户不存在或已注销!")
-    query_user = user.outerjoin(Users.to_friend)
-    query_user = query_user.filter(UserFriend.user_id == current_user.object_id)
-    query_user = query_user.options(contains_eager(Users.to_friend)).first()
-    if not query_user:
-        res = phone_user.to_json()
-        res["user_friend_info"] = {'flag': 4}
-        return succeed(data=res)
-    else:
-        return succeed(data=query_user.to_json_friend())
+def user_query_users_by_phone(code, encryptedData, iv, rawData, signature):
+
+    app_id = current_app.config["APPID"]
+    app_secret = current_app.config["APPSECRET"]
+    url = "https://api.weixin.qq.com/sns/jscode2session?appid={}&secret={}&js_code={}&grant_type=authorization_code".\
+        format(app_id, app_secret, code)
+    content = requests.get(url)
+    res = json.loads(content.text)
+    openid = res["openid"]
+    user = Users.query.filter_by(openid=openid).first()
+    if not user:
+        user = Users()
+        user.openid = openid
+    user.sex = rawData.get("gender")
+    user.city = rawData.get("province")
+    user.wx_name = rawData.get("nickName")
+    user.wx_head_portrait = rawData.get("avatarUrl")
+    db.session.add(user)
+
+    def callback(user):
+        return user.to_json()
+
+    return usually_with_callback(callback=callback, parms=(user,))
 
 
 @api.route("/user/add_friend", methods=["GET"])

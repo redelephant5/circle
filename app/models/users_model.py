@@ -21,23 +21,22 @@ pinyin = Pinyin()
 class Users(BaseModelUuidPk):
 
     user_name = db.Column(db.String(50), comment="用户名称")
-    user_pinyin = db.Column(db.String(255), comment="用户拼音")
-    nick_name = db.Column(db.String(50), comment="昵称")
-    nick_pinyin = db.Column(db.String(255), comment="昵称拼音")
     email = db.Column(db.String(255), default='', comment="邮箱")
     phone = db.Column(db.String(255), index=True, comment="手机号")
     password = db.Column(db.String(255), comment="密码")
     device_identifier = db.Column(db.String(255), comment="设备标示")
     sex = db.Column(db.Integer, default=3, comment="性别 1 男 2 女 3未配置")
     birthday = db.Column(db.Date, index=True, comment="生日")
+    city = db.Column(db.String(10), comment="城市")
     entry_date = db.Column(db.DateTime, nullable=False, default=datetime.now, server_default=func.now(),
                            comment="加入的时间")
     state = db.Column(db.Integer, default=UserState.normal.value, server_default=text('0'), index=True, comment="状态")
     openid = db.Column(db.String(100), index=True, comment='小程序openid')
     wx_name = db.Column(db.String(50), comment="微信昵称")
+    wx_head_portrait = db.Column(db.String(200), comment="微信头像url")
 
     def to_json(self, exclude_list=()):
-        res = super(Users, self).to_json(exclude_list=["password"])
+        res = super(Users, self).to_json(exclude_list=["password", "openid"])
         return res
 
     def to_json_friend(self, exclude_list=()):

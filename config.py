@@ -16,6 +16,10 @@ class Config:
     SQLALCHEMY_POOL_SIZE = 500
     SQLALCHEMY_ECHO = True
 
+    #小程序
+    APPID = "wxb505c615732aa3d4"
+    APPSECRET = "3213038ab0c99fa45daeaf47e8b09b53"
+
     def init_app(self):
         pass
 
