@@ -70,17 +70,14 @@ def user_verify_data(verify_data, data_type):
 @user_required
 @check_request_params(
     user_name=("user_name", True, CheckType.other),
-    nick_name=("nick_name", False, CheckType.other),
+    phone=("phone", False, CheckType.other),
     email=("email", False, CheckType.email),
     sex=("sex", True, CheckType.int),
     birthday=("birthday", False, CheckType.date)
 )
-def user_update(user_name, nick_name, email, sex, birthday):
+def user_update(user_name, phone, email, sex, birthday):
     current_user.user_name = user_name
-    current_user.user_pinyin = current_user.set_pinyin(user_name)
-    current_user.nick_name = nick_name
-    if nick_name:
-        current_user.nick_pinyin = current_user.set_pinyin(nick_name)
+    current_user.phone = phone
     current_user.email = email
     current_user.sex = sex
     current_user.birthday = birthday
