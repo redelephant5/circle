@@ -158,9 +158,10 @@ def user_query_users_by_phone(code, encryptedData, iv, rawData, signature):
     res = json.loads(content.text)
     openid = res["openid"]
     user = Users.query.filter_by(openid=openid).first()
-    if not user:
-        user = Users()
-        user.openid = openid
+    if user:
+        return succeed(data=user.to_json())
+    user = Users()
+    user.openid = openid
     user.sex = rawData.get("gender")
     user.city = rawData.get("province")
     user.wx_name = rawData.get("nickName")
@@ -171,6 +172,28 @@ def user_query_users_by_phone(code, encryptedData, iv, rawData, signature):
         return user.to_json()
 
     return usually_with_callback(callback=callback, parms=(user,))
+
+
+# 小程序同步信息
+@api.route("/user/wx_sync_info", methods=["POST"])
+@user_required
+@check_request_params(
+    encryptedData=("encryptedData", True, CheckType.other),
+    iv=("iv", True, CheckType.other),
+    rawData=("rawData", True, CheckType.json),
+    signature=("signature", True, CheckType.other)
+)
+def user_wx_sync_info(encryptedData, iv, rawData, signature):
+    current_user.sex = rawData.get("gender")
+    current_user.city = rawData.get("province")
+    current_user.wx_name = rawData.get("nickName")
+    current_user.wx_head_portrait = rawData.get("avatarUrl")
+    db.session.add(current_user)
+
+    def callback(user):
+        return user.to_json()
+
+    return usually_with_callback(callback=callback, parms=(current_user,))
 
 
 @api.route("/user/add_friend", methods=["GET"])
