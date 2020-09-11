@@ -396,8 +396,29 @@ def user_query_trip(start_time, end_time, query_user_id):
         order_by(UserTrip.start_time).all()
     for user_trip in user_trips:
         if user_trip.start_time.strftime("%Y-%m-%d") not in res:
-            res[user_trip.start_time.strftime("%Y-%m-%d")] = []
-        res[user_trip.start_time.strftime("%Y-%m-%d")].append(user_trip.to_json())
+            res[user_trip.start_time.strftime("%Y-%m-%d")] = 1
+    return succeed(data=res)
+
+
+@api.route("/user/query_day_trip_detail", methods=["GET"])
+@user_required
+@check_request_params(
+    query_day=("query_day", True, CheckType.date),
+    query_user_id=("query_user_id", False, CheckType.other)
+)
+def user_query_day_trip_detail(query_day, query_user_id):
+    if query_user_id:
+        user_id = query_user_id
+    else:
+        user_id = current_user.object_id
+    user_trips = UserTrip.query.filter(UserTrip.user_id == user_id,
+                                       UserTrip.start_time >= query_day,
+                                       UserTrip.end_time < query_day + timedelta(days=1),
+                                       UserTrip.is_valid == 1). \
+        order_by(UserTrip.start_time).all()
+    res = []
+    for user_trip in user_trips:
+        res.append(user_trip.to_json())
     return succeed(data=res)
 
 
