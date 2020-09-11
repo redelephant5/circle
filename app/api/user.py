@@ -390,30 +390,15 @@ def user_query_trip(start_time, end_time, query_user_id):
     else:
         user_id = current_user.object_id
     user_trips = UserTrip.query.filter(UserTrip.user_id == user_id,
-                                       or_(
-                                           and_(
-                                               UserTrip.start_time >= start_time,
-                                               UserTrip.end_time < end_time + timedelta(days=1)
-                                           ),
-                                           and_(
-                                               UserTrip.start_time <= start_time,
-                                               UserTrip.end_time > end_time + timedelta(days=1)
-                                           )
-                                       ),
+                                       UserTrip.start_time >= start_time,
+                                       UserTrip.end_time < end_time + timedelta(days=1),
                                        UserTrip.is_valid == 1).\
         order_by(UserTrip.start_time).all()
-    mid_date = (end_time - start_time).days
-    for m_date in range(mid_date + 1):
-        res_date = start_time + timedelta(days=m_date)
-        res[res_date.strftime("%Y-%m-%d")] = []
-    for key, value in res.items():
-        for user_trip in user_trips:
-            if user_trip.start_time.date() <= datetime.strptime(key, "%Y-%m-%d").date() <= user_trip.end_time.date():
-                res[key].append(user_trip.to_json())
-    response = []
-    for k in sorted(res.keys()):
-        response.append({k: res[k]})
-    return succeed(data=response)
+    for user_trip in user_trips:
+        if user_trip.start_time.strftime("%Y-%m-%d") not in res:
+            res[user_trip.start_time.strftime("%Y-%m-%d")] = []
+        res[user_trip.start_time.strftime("%Y-%m-%d")].append(user_trip.to_json())
+    return succeed(data=res)
 
 
 @api.route("/user/delete_trip", methods=["GET"])
