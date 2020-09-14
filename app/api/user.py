@@ -390,36 +390,68 @@ def user_query_trip(start_time, end_time, query_user_id):
     else:
         user_id = current_user.object_id
     user_trips = UserTrip.query.filter(UserTrip.user_id == user_id,
-                                       UserTrip.start_time >= start_time,
-                                       UserTrip.end_time < end_time + timedelta(days=1),
+                                       or_(
+                                           and_(
+                                               UserTrip.start_time >= start_time,
+                                               UserTrip.end_time < end_time + timedelta(days=1)
+                                           ),
+                                           and_(
+                                               UserTrip.start_time <= start_time,
+                                               UserTrip.end_time > end_time + timedelta(days=1)
+                                           )
+                                       ),
                                        UserTrip.is_valid == 1).\
         order_by(UserTrip.start_time).all()
     for user_trip in user_trips:
-        if user_trip.start_time.strftime("%Y-%m-%d") not in res:
-            res[user_trip.start_time.strftime("%Y-%m-%d")] = 1
+        days = (user_trip.end_time.date() - user_trip.start_time.date()).days
+        if days >= 1:
+            for i in range(days + 1):
+                include_date = user_trip.start_time + timedelta(days=i)
+                if start_time <= include_date <= end_time + timedelta(days=1):
+                    if include_date.strftime("%Y-%m-%d") not in res:
+                        res[(user_trip.start_time + timedelta(days=i)).strftime("%Y-%m-%d")] = [user_trip.object_id]
+                    else:
+                        res[(user_trip.start_time + timedelta(days=i)).strftime("%Y-%m-%d")].append(user_trip.object_id)
+        else:
+            if user_trip.start_time.strftime("%Y-%m-%d") not in res:
+                res[user_trip.start_time.strftime("%Y-%m-%d")] = [user_trip.object_id]
+            else:
+                res[user_trip.start_time.strftime("%Y-%m-%d")].append(user_trip.object_id)
     return succeed(data=res)
 
 
-@api.route("/user/query_day_trip_detail", methods=["GET"])
+@api.route("/user/query_day_trip_list", methods=["GET"])
 @user_required
 @check_request_params(
-    query_day=("query_day", True, CheckType.date),
+    trip_ids=("trip_ids", True, CheckType.json),
     query_user_id=("query_user_id", False, CheckType.other)
 )
-def user_query_day_trip_detail(query_day, query_user_id):
+def user_query_day_trip_detail(trip_ids, query_user_id):
     if query_user_id:
         user_id = query_user_id
     else:
         user_id = current_user.object_id
     user_trips = UserTrip.query.filter(UserTrip.user_id == user_id,
-                                       UserTrip.start_time >= query_day,
-                                       UserTrip.end_time < query_day + timedelta(days=1),
+                                       UserTrip.object_id.in_(trip_ids),
                                        UserTrip.is_valid == 1). \
         order_by(UserTrip.start_time).all()
     res = []
     for user_trip in user_trips:
-        res.append(user_trip.to_json())
+        res.append(dict(trip_name=user_trip.name, start_time=user_trip.start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                        end_time=user_trip.end_time.strftime("%Y-%m-%d %H:%M:%S"), trip_id=user_trip.object_id))
     return succeed(data=res)
+
+
+@api.route("/user/query_trip_detail", methods=["GET"])
+@user_required
+@check_request_params(
+    trip_id=("trip_id", True, CheckType.other)
+)
+def user_query_trip_detail(trip_id):
+    user_trip = UserTrip.query.filter_by(object_id=trip_id, is_valid=1).first()
+    if not user_trip:
+        return custom(msg="该行程不存在!")
+    return succeed(data=user_trip.to_json())
 
 
 @api.route("/user/delete_trip", methods=["GET"])
