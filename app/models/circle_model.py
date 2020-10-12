@@ -44,3 +44,4 @@ class CircleUser(BaseModelIntPk):
 
 Users.circle_user = db.relationship("CircleUser", backref="users")
 Circle.circle_user = db.relationship("CircleUser", backref="circle")
+Circle.trips = db.relationship("UserTrip", backref="circle")

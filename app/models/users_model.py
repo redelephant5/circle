@@ -67,6 +67,7 @@ class UserTrip(BaseModelUuidPk):
     is_see = db.Column(db.Boolean, default=True, comment="是否可见")
     trip_source = db.Column(db.Integer, default=1, comment="行程来源 1 本人 2 团队")
     is_join = db.Column(db.Boolean, default=True, comment="是否加入行程")
+    circle_id = db.Column(db.String(32), db.ForeignKey("circle.object_id"))
 
 
 Users.trips = db.relationship("UserTrip", backref="user")

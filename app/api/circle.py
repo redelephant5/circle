@@ -350,6 +350,7 @@ def circle_add_circle_trip(circle_id, start_time, end_time, trip_name):
         user_trip.is_adjust = 0
         user_trip.is_see = 1
         user_trip.trip_source = 2
+        user_trip.circle = circle
         if circle_user[0] == current_user.object_id:
             user_trip.is_join = 1
             db.session.add(user_trip)
