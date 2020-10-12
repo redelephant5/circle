@@ -361,7 +361,7 @@ def user_create_trip(trip_id, start_time, end_time, name, is_adjust, is_see):
     user_trip.start_time = start_time
     user_trip.end_time = end_time
     user_trip.name = name
-    user_trip.is_valid = is_adjust
+    user_trip.is_adjust = is_adjust
     user_trip.is_see = is_see
     db.session.add(user_trip)
     circle_user = CircleUser.query.join(CircleUser.circle)
@@ -433,12 +433,15 @@ def user_query_day_trip_detail(trip_ids, query_user_id):
         user_id = current_user.object_id
     user_trips = UserTrip.query.filter(UserTrip.user_id == user_id,
                                        UserTrip.object_id.in_(trip_ids),
-                                       UserTrip.is_valid == 1). \
-        order_by(UserTrip.start_time).all()
+                                       UserTrip.is_valid == 1)
+    if query_user_id:
+        user_trips = user_trips.filter(UserTrip.is_see == 1)
+    user_trips = user_trips.order_by(UserTrip.start_time).all()
     res = []
     for user_trip in user_trips:
         res.append(dict(trip_name=user_trip.name, start_time=user_trip.start_time.strftime("%Y-%m-%d %H:%M:%S"),
-                        end_time=user_trip.end_time.strftime("%Y-%m-%d %H:%M:%S"), trip_id=user_trip.object_id))
+                        end_time=user_trip.end_time.strftime("%Y-%m-%d %H:%M:%S"), trip_id=user_trip.object_id,
+                        trip_source=user_trip.trip_source, is_join=user_trip.is_join))
     return succeed(data=res)
 
 

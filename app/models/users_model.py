@@ -68,12 +68,6 @@ class UserTrip(BaseModelUuidPk):
     trip_source = db.Column(db.Integer, default=1, comment="行程来源 1 本人 2 团队")
     is_join = db.Column(db.Boolean, default=True, comment="是否加入行程")
 
-    def to_json(self, exclude_list=()):
-        res = super(UserTrip, self).to_json(exclude_list=exclude_list)
-        if self.is_see == 0:
-            res["name"] = "不能告诉你哦～"
-        return res
-
 
 Users.trips = db.relationship("UserTrip", backref="user")
 Users.trips_query = db.relationship("UserTrip", backref="user_query", lazy="dynamic")
