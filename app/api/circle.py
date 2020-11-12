@@ -62,7 +62,14 @@ def circle_query_circle():
                              CircleUser.is_join.in_([0, 1]))
     circles = circles.options(joinedload(CircleUser.circle))
     for circle in circles:
-        res.append(circle.to_json_circle())
+        circle_info = circle.to_json_circle()
+        circle_info["circle_user_count"] = CircleUser.query.filter_by(circle_id=circle.circle_id,
+                                                                      is_join=1).count()
+        circle_owner = CircleUser.query.join(CircleUser.users).options(CircleUser.users).\
+            filter(CircleUser.circle_id == circle.circle_id,
+                   CircleUser.is_organizer == True).first()
+        circle_info["circle_owner"] = circle_owner.users.wx_name if circle_owner else '未知'
+        res.append(circle_info)
     return succeed(data=res)
 
 
