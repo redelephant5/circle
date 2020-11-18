@@ -155,14 +155,14 @@ def user_query_users_by_phone(code, encryptedData, iv, rawData, signature):
     res = json.loads(content.text)
     openid = res["openid"]
     user = Users.query.filter_by(openid=openid).first()
-    if user:
-        return succeed(data=user.to_json())
-    user = Users()
+    if not user:
+        user = Users()
     user.openid = openid
     user.sex = rawData.get("gender")
     user.city = rawData.get("province")
     user.wx_name = rawData.get("nickName")
     user.wx_head_portrait = rawData.get("avatarUrl")
+    user.set_pinyin(rawData.get("nickName"))
     db.session.add(user)
 
     def callback(user):

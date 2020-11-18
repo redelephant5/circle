@@ -34,9 +34,11 @@ class Users(BaseModelUuidPk):
     openid = db.Column(db.String(100), index=True, comment='小程序openid')
     wx_name = db.Column(db.String(50), comment="微信昵称")
     wx_head_portrait = db.Column(db.String(200), comment="微信头像url")
+    wx_pinyin_name = db.Column(db.String(50), comment="微信昵称拼音")
 
     def to_json(self, exclude_list=()):
         res = super(Users, self).to_json(exclude_list=["password", "openid"])
+        res['Findex'] = self.wx_pinyin_name[0].capitalize()
         return res
 
     def to_json_friend(self, exclude_list=()):
@@ -50,7 +52,8 @@ class Users(BaseModelUuidPk):
             pinyin_name = pinyin.get_pinyin(name, '')
         except Exception:
             pinyin_name = ""
-        return pinyin_name
+        self.wx_pinyin_name = pinyin_name
+        db.session.add(self)
 
 
 class UserTrip(BaseModelUuidPk):
