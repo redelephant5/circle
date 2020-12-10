@@ -630,3 +630,13 @@ def user_delete_notice(notify_detail_id):
         return custom(msg='消息还未处理不允许删除!')
     db.session.delete(notify_detail)
     return usually(msg='删除成功!')
+
+
+@api.route("/user/accept_para", methods=["POST"])
+def user_accept_para():
+    from flask import request
+    data = request.form
+    data_1 = request.data
+    print('1:', data)
+    print('2:', data_1)
+    return succeed()
